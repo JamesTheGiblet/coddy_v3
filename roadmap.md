@@ -16,54 +16,57 @@ Coddy is being built to support the creative-coding flow: design your ideas, cha
   - [x] Sub-task: Implement creation of new project directories within `coddy_codes/` (`os.makedirs`).
   - [x] Sub-task: Develop functions for reading and listing directory contents (`os.listdir`, `os.path.join`, `os.path.isfile`, `os.path.isdir`).
 - [x] Task: Implement local project metadata storage via `config_manager` (settings.json and .env)
-  - [ ] Sub-task: Develop functions for loading and saving application-wide settings (e.g., last active theme, `unorthodox_ideas` slider value) in `settings.json`.
+  - [x] Sub-task: Develop functions for loading and saving application-wide settings (e.g., last active theme, `unorthodox_ideas` slider value) in `settings.json`.
   - [x] Sub-task: Implement secure storage and retrieval of AI API keys (e.g., `GEMINI_API_KEY`) in the `.env` file.
 
 ---
 
 ### Phase 2: 🌱 Genesis Tab
 
-- [ ] Task: Build Genesis chat interface using Tkinter
-  - [ ] Sub-task: Design the chat history display using `tk.Text` widget with scrolling.
-  - [ ] Sub-task: Implement user input handling using `tk.Entry` and a 'Send' button.
-  - [ ] Sub-task: Integrate 'Weird Idea', 'Generate README', and 'Generate Roadmap' buttons.
-- [ ] LLM API call to turn chat → README
-  - [ ] Sub-task: Configure `AIEngine` with `google.generativeai` and the Gemini model.
-  - [ ] Sub-task: Implement initial system prompts for project definition and README generation.
-  - [ ] Sub-task: Develop threading for AI calls to prevent UI freezing.
-- [ ] Generate roadmap from README
-  - [ ] Sub-task: Define specific system prompts and markdown structure for roadmap generation.
-- [ ] Display phases + tasks visually
-  - [ ] Sub-task: Ensure generated `roadmap.md` adheres to a structured, phase-based markdown format.
-- [ ] Save roadmap to project context
-  - [ ] Sub-task: Implement `save_roadmap` function in `main_application` to write markdown content to `roadmap.md` within the project folder.
-- [ ] Add “💡 Give Me an Idea” button
-  - [ ] Normal mode → standard startup/app ideas
-  - [ ] Weird mode → wild & absurd ideas only
-  - [ ] Sub-task: Implement button action to send a predefined "weird idea" prompt to the AI.
+- [x] Task: Build Genesis chat interface using Tkinter
+  - [x] Sub-task: Design the chat history display using `tk.Text` widget with scrolling.
+  - [x] Sub-task: Implement user input handling using `tk.Entry` and a 'Send' button.
+  - [x] Sub-task: Integrate 'Weird Idea', 'Generate README', and 'Generate Roadmap' buttons.
+- [x] LLM API call to turn chat → README
+  - [x] Sub-task: Configure `AIEngine` with `google.generativeai` and the Gemini model.
+  - [x] Sub-task: Implement initial system prompts for project definition and README generation.
+  - [x] Sub-task: Develop threading for AI calls to prevent UI freezing.
+- [x] Generate roadmap from README
+  - [x] Sub-task: Define specific system prompts and markdown structure for roadmap generation.
+- [x] Display phases + tasks visually
+  - [x] Sub-task: Ensure generated `roadmap.md` adheres to a structured, phase-based markdown format.
+- [x] Save roadmap to project context
+  - [x] Sub-task: Implement `save_roadmap` function in `main_application` to write markdown content to `roadmap.md` within the project folder.
+- [x] Add “💡 Give Me an Idea” button
+  - [x] Normal mode → standard startup/app ideas
+  - [x] Weird mode → wild & absurd ideas only
+  - [x] Sub-task: Implement button action to send a predefined "weird idea" prompt to the AI.
 
 ---
 
 ### Phase 3: 🎨 Theme System
 
-- [ ] Task: Implement theme application logic across Tkinter widgets
-  - [ ] Sub-task: Develop a centralized theme module (`theme.py`) defining color palettes (background, foreground, accent, etc.).
-  - [ ] Sub-task: Implement methods in `MainApplication`, `LandingPage`, and individual tabs to apply selected theme colors to all relevant UI elements.
-- [ ] Task: Store selected theme in application configuration via `config_manager`
-  - [ ] Sub-task: Integrate theme selection persistence using `config_manager.save_config`.
-- [ ] Task: Define Light, Dark, and Weird color palettes in `theme.py` for Tkinter styling
-  - [ ] Sub-task: Define distinct color dictionaries for 'dark', 'light', and 'weird' themes.
-- [ ] Task: Implement theme toggle buttons on the Landing Page and Main Application
-  - [ ] Sub-task: Create interactive buttons to switch themes (`LandingPage.switch_theme`, `MainApplication.switch_theme`).
+- [x] Task: Implement theme application logic across Tkinter widgets
+  - [x] Sub-task: Develop a centralized theme module (`theme.py`) defining color palettes (background, foreground, accent, etc.).
+  - [x] Sub-task: Implement methods in `MainApplication`, `LandingPage`, and individual tabs to apply selected theme colors to all relevant UI elements.
+- [x] Task: Store selected theme in application configuration via `config_manager`
+  - [x] Sub-task: Integrate theme selection persistence using `config_manager.save_config`.
+- [x] Task: Define Light, Dark, and Weird color palettes in `theme.py` for Tkinter styling
+  - [x] Sub-task: Define distinct color dictionaries for 'dark', 'light', and 'weird' themes.
+- [x] Task: Implement theme toggle buttons on the Landing Page and Main Application
+  - [x] Sub-task: Create interactive buttons to switch themes (`LandingPage.switch_theme`, `MainApplication.switch_theme`).
 
 ---
 
 ### Phase 4: ✍️ Edit Tab
 
-- [ ] View + edit file contents
-  - [ ] Sub-task: Implement `ttk.Treeview` for displaying the project's file structure.
-  - [ ] Sub-task: Develop file selection handler to load content into a `tk.Text` widget for viewing/editing.
-- [ ] Send code + task to LLM → receive suggestion
+- [x] View + edit file contents
+  - [x] Sub-task: Implement `ttk.Treeview` for displaying the project's file structure.
+  - [x] Sub-task: Develop file selection handler to load content into a `tk.Text` widget for viewing/editing.
+- [x] Send code + task to LLM → receive suggestion
+  - [x] Sub-task: Add UI elements (input field, button) to the Edit Tab for AI interaction.
+  - [x] Sub-task: Implement a handler to send the current code and user task to the AI engine in a thread.
+  - [x] Sub-task: Create a new window to display the AI's suggestion.
 - [ ] Apply AI edit inline (Creator+ tier)
 - [ ] Full semantic refactor (Architect+)
 
@@ -113,6 +116,6 @@ All users can:
 
 ---
 
-## 🌟 Current Focus: Phase 1–3
+## 🌟 Current Focus: Phase 4 - Edit Tab
 
-- Landing Page, Genesis Chat, Theme Toggle
+- Implementing AI suggestions and refactoring in the editor.

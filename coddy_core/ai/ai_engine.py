@@ -33,3 +33,30 @@ class AIEngine:
         except Exception as e:
             print(f"An error occurred with the AI model: {e}")
             return f"Sorry, I encountered an error: {e}"
+
+    def get_code_suggestion(self, user_prompt, code_snippet):
+        """
+        Generates a code suggestion based on a user prompt and a code snippet.
+        """
+        if not self.model:
+            raise ConnectionError("AI model is not initialized. Please check your API key.")
+
+        system_prompt = f"""
+You are an expert software engineering assistant named Coddy.
+A user has provided a code snippet and a request for a modification or suggestion.
+Your task is to analyze the code and the request, and provide a helpful, well-explained response.
+Format your response using Markdown. If you provide a modified code block, explain what you changed and why.
+
+User's Request: "{user_prompt}"
+
+Analyze the following code snippet:
+```
+{code_snippet}
+```
+"""
+        try:
+            response = self.model.generate_content(system_prompt)
+            return response.text
+        except Exception as e:
+            print(f"Error during AI code suggestion generation: {e}")
+            raise e # Re-raise to be caught by the UI thread

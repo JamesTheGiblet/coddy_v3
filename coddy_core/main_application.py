@@ -5,6 +5,7 @@ import theme
 import config_manager
 from ai.ai_engine import AIEngine
 from tabs.genesis_tab import GenesisTab
+from tabs.edit_tab import EditTab
 from tabs.settings_tab import SettingsTab
 
 class MainApplication(tk.Toplevel):
@@ -63,7 +64,7 @@ class MainApplication(tk.Toplevel):
         """Initialize holders for widgets that need to be accessed later."""
         self.tree = None
         self.notebook = None
-        self.edit_text = None
+        self.edit_tab = None
         self.settings_tab = None
         self.genesis_tab = None
 
@@ -93,16 +94,9 @@ class MainApplication(tk.Toplevel):
             self.tab_frames[name] = tab_frame
 
             if name == "Edit":
-                # Create a Text widget with a Scrollbar for the Edit tab
-                edit_frame = tk.Frame(tab_frame, bg=self.colors['bg'])
-                edit_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-                
-                self.edit_text = tk.Text(edit_frame, wrap=tk.WORD, relief=tk.FLAT, borderwidth=0)
-                scrollbar = ttk.Scrollbar(edit_frame, orient=tk.VERTICAL, command=self.edit_text.yview)
-                self.edit_text.config(yscrollcommand=scrollbar.set)
-                
-                scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-                self.edit_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+                # Instantiate the self-contained EditTab
+                self.edit_tab = EditTab(tab_frame, self.colors, self)
+                self.edit_tab.pack(fill=tk.BOTH, expand=True)
             elif name == "Settings":
                 self.settings_tab = SettingsTab(tab_frame, self.colors, self.app_config)
                 self.settings_tab.pack(fill=tk.BOTH, expand=True)
@@ -142,18 +136,8 @@ class MainApplication(tk.Toplevel):
         file_path = self.tree.item(selected_item_id, 'values')[0]
 
         if os.path.isfile(file_path):
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                self.notebook.select(self.tab_frames["Edit"])
-                self.edit_text.delete('1.0', tk.END)
-                self.edit_text.insert('1.0', content)
-            except Exception as e:
-                # Display an error if the file can't be read (e.g., binary)
-                error_message = f"Could not read file:\n{file_path}\n\nError: {e}"
-                self.notebook.select(self.tab_frames["Edit"])
-                self.edit_text.delete('1.0', tk.END)
-                self.edit_text.insert('1.0', error_message)
+            self.notebook.select(self.tab_frames["Edit"])
+            self.edit_tab.load_file(file_path)
 
     def _apply_colors(self):
         """Apply theme colors to non-ttk widgets."""
@@ -180,8 +164,7 @@ class MainApplication(tk.Toplevel):
             self.refresh_file_tree()
             # Open the new file in the editor for immediate viewing
             self.notebook.select(self.tab_frames["Edit"])
-            self.edit_text.delete('1.0', tk.END)
-            self.edit_text.insert('1.0', content)
+            self.edit_tab.load_file_content(content)
         except IOError as e:
             print(f"Error saving README.md: {e}")
 
@@ -195,8 +178,7 @@ class MainApplication(tk.Toplevel):
             self.refresh_file_tree()
             # Open the new file in the editor for immediate viewing
             self.notebook.select(self.tab_frames["Edit"])
-            self.edit_text.delete('1.0', tk.END)
-            self.edit_text.insert('1.0', content)
+            self.edit_tab.load_file_content(content)
         except IOError as e:
             print(f"Error saving roadmap.md: {e}")
 
@@ -225,10 +207,8 @@ class MainApplication(tk.Toplevel):
         for name, frame in self.tab_frames.items():
             frame.config(bg=self.colors['bg'])
             if name == "Edit":
-                # Special handling for the Text widget
-                self.edit_text.config(bg=self.colors['bg'], fg=self.colors['fg'],
-                                      insertbackground=self.colors['fg'],
-                                      selectbackground=self.colors['accent'])
+                if self.edit_tab:
+                    self.edit_tab.apply_colors(self.colors)
             elif name == "Settings":
                 if self.settings_tab:
                     self.settings_tab.apply_colors(self.colors)
