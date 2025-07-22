@@ -1,8 +1,9 @@
 {
     "gemini_api_key": "AIzaSyDXkBnStsCt1isS-69qimmHd0ZxVozq5Qg",
     "unorthodox_ideas": 23.809523809523807,
-    "active_tier": "Free",
+    "active_tier": "Visionary",
     "theme": "dark",
     "developer_autosave": false,
-    "developer_debug_info": false
+    "developer_debug_info": false,
+    "has_run_before": true
 }

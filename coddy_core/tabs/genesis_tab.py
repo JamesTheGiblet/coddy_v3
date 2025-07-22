@@ -17,9 +17,11 @@ class GenesisTab(tk.Frame):
         self.readme_generated = False
 
         self._create_widgets()
-        self._initial_greeting()
         if self.ai_engine:
             self.ai_engine.start_new_chat()
+            self._display_initial_chat_history()
+        else:
+            self._initial_greeting() # Fallback if no AI engine
 
     def _create_widgets(self):
         """Creates and lays out the widgets for the genesis tab."""
@@ -73,6 +75,17 @@ class GenesisTab(tk.Frame):
         greeting = "Welcome to the Genesis Chamber.\n\nWhat are we building today? Describe your idea, and I'll help you create a project roadmap."
         self._add_message("Coddy", greeting)
 
+    def _display_initial_chat_history(self):
+        """Populates the chat history with the initial messages from the AI engine."""
+        if not self.ai_engine or not self.ai_engine.chat:
+            return
+        
+        # The history starts with the system prompt, which we don't show.
+        # The second message is the AI's greeting.
+        for message in self.ai_engine.chat.history[1:]: # Skip the system prompt
+            sender = "Coddy" if message.role == 'model' else "You"
+            self._add_message(sender, message.parts[0].text)
+
     def _add_message(self, sender, message):
         """Adds a message to the chat history text widget."""
         self.chat_history.config(state=tk.NORMAL)
@@ -93,23 +106,11 @@ class GenesisTab(tk.Frame):
         self.generate_button.config(state=tk.DISABLED)
         self.roadmap_button.config(state=tk.DISABLED)
 
-        # Inject system prompt on the very first user message
-        if len(self.ai_engine.chat.history) == 0:
-            system_prompt = (
-                "You are Coddy, an AI coding companion. Your goal is to help the user define a new software project. "
-                "Engage in a friendly, conversational manner. Ask clarifying questions about the project's purpose, features, and target audience. "
-                "Do not use the `[READY_TO_GENERATE]` token on your first turn; you must ask questions first and wait for the user's response. "
-                "Only after the user has provided sufficient answers should you determine if you are ready. When you feel you have enough information to create a detailed README.md file, you MUST end your response with the exact token: `[READY_TO_GENERATE]`."
-            )
-            full_prompt = f"{system_prompt}\n\nUser's idea: {prompt}"
-        else:
-            full_prompt = prompt
-
         if generation_type == 'chat':
             self._add_message("Coddy", "Thinking...")
 
         # Run the AI call in a separate thread
-        thread = threading.Thread(target=self._get_ai_response_threaded, args=(full_prompt, generation_type))
+        thread = threading.Thread(target=self._get_ai_response_threaded, args=(prompt, generation_type))
         thread.start()
 
     def _get_ai_response_threaded(self, prompt, generation_type):

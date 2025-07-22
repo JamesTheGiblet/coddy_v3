@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, simpledialog, messagebox
 import os
+import shutil
 from . import auth, config_manager, subscription, theme
 from .ai.ai_engine import AIEngine
 from .tabs.genesis_tab import GenesisTab
@@ -89,6 +90,8 @@ class MainApplication(tk.Toplevel):
         self.settings_tab = None
         self.genesis_tab = None
         self.tasks_tab = None
+        self.status_bar_label = None
+        self.context_menu = None
 
     def _create_widgets(self):
         """Create the main layout and widgets."""
@@ -111,6 +114,7 @@ class MainApplication(tk.Toplevel):
 
         self.tree = ttk.Treeview(tree_container)
         self.tree.pack(fill=tk.BOTH, expand=True)
+        self._create_context_menu()
 
         # Right pane: Tabs
         self.notebook = ttk.Notebook(paned_window)
@@ -143,6 +147,127 @@ class MainApplication(tk.Toplevel):
                 placeholder.pack(pady=50)
 
         self.tree.bind('<<TreeviewSelect>>', self._on_tree_select)
+        self.tree.bind('<Button-3>', self._show_context_menu) # For Windows/Linux
+        self.tree.bind('<Button-2>', self._show_context_menu) # For macOS
+
+        # --- Status Bar ---
+        status_frame = tk.Frame(self, bg=self.colors['bg'])
+        status_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=2, pady=2)
+        self.status_bar_label = tk.Label(status_frame, text="Ready.", anchor=tk.W, bg=self.colors['bg'], fg=self.colors['quote'])
+        self.status_bar_label.pack(fill=tk.X, padx=5)
+
+    def _create_context_menu(self):
+        """Creates the right-click context menu for the file tree."""
+        self.context_menu = tk.Menu(self.tree, tearoff=0)
+        self.context_menu.add_command(label="New File...", command=self._new_file)
+        self.context_menu.add_command(label="New Folder...", command=self._new_folder)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="Rename...", command=self._rename_item)
+        self.context_menu.add_command(label="Delete", command=self._delete_item)
+
+    def _show_context_menu(self, event):
+        """Shows the context menu on right-click."""
+        item_id = self.tree.identify_row(event.y)
+        if item_id:
+            self.tree.selection_set(item_id)
+            # Enable item-specific actions
+            self.context_menu.entryconfig("Rename...", state="normal")
+            self.context_menu.entryconfig("Delete", state="normal")
+        else:
+            # Clicked on empty space, disable item-specific actions
+            self.tree.selection_set() # Deselect everything
+            self.context_menu.entryconfig("Rename...", state="disabled")
+            self.context_menu.entryconfig("Delete", state="disabled")
+        
+        self.context_menu.post(event.x_root, event.y_root)
+
+    def _get_selected_path(self):
+        """Gets the full path of the currently selected item in the tree."""
+        selected_ids = self.tree.selection()
+        if not selected_ids:
+            return None
+        return self.tree.item(selected_ids[0], 'values')[0]
+
+    def _rename_item(self):
+        """Renames the selected file or folder."""
+        path = self._get_selected_path()
+        if not path: return
+
+        dir_name, old_name = os.path.split(path)
+        new_name = simpledialog.askstring("Rename", f"Enter new name for '{old_name}':", initialvalue=old_name, parent=self)
+
+        if new_name and new_name.strip() and new_name != old_name:
+            new_path = os.path.join(dir_name, new_name)
+            try:
+                os.rename(path, new_path)
+                self.refresh_file_tree()
+                self.update_status(f"Renamed to '{new_name}'")
+            except OSError as e:
+                messagebox.showerror("Error", f"Could not rename: {e}", parent=self)
+
+    def _delete_item(self):
+        """Deletes the selected file or folder."""
+        path = self._get_selected_path()
+        if not path: return
+
+        item_name = os.path.basename(path)
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to permanently delete '{item_name}'?", parent=self):
+            try:
+                if os.path.isfile(path):
+                    os.remove(path)
+                elif os.path.isdir(path):
+                    shutil.rmtree(path)
+                self.refresh_file_tree()
+                self.update_status(f"Deleted '{item_name}'")
+            except OSError as e:
+                messagebox.showerror("Error", f"Could not delete: {e}", parent=self)
+
+    def _new_file(self):
+        """Creates a new empty file in the selected directory or project root."""
+        path = self._get_selected_path()
+        if path and os.path.isfile(path):
+            target_dir = os.path.dirname(path)
+        elif path and os.path.isdir(path):
+            target_dir = path
+        else:
+            target_dir = self.project_path
+
+        file_name = simpledialog.askstring("New File", "Enter name for the new file:", parent=self)
+        if file_name and file_name.strip():
+            new_path = os.path.join(target_dir, file_name)
+            if os.path.exists(new_path):
+                messagebox.showwarning("Exists", "A file with that name already exists.", parent=self)
+                return
+            try:
+                with open(new_path, 'w') as f:
+                    pass # Create empty file
+                self.refresh_file_tree()
+                self.update_status(f"Created file: {file_name}")
+            except OSError as e:
+                messagebox.showerror("Error", f"Could not create file: {e}", parent=self)
+
+    def _new_folder(self):
+        """Creates a new folder in the selected directory or project root."""
+        path = self._get_selected_path()
+        if path and os.path.isfile(path):
+            target_dir = os.path.dirname(path)
+        elif path and os.path.isdir(path):
+            target_dir = path
+        else:
+            target_dir = self.project_path
+
+        folder_name = simpledialog.askstring("New Folder", "Enter name for the new folder:", parent=self)
+        if folder_name and folder_name.strip():
+            new_path = os.path.join(target_dir, folder_name)
+            if os.path.exists(new_path):
+                messagebox.showwarning("Exists", "A folder with that name already exists.", parent=self)
+                return
+            try:
+                os.makedirs(new_path)
+                self.refresh_file_tree()
+                self.update_status(f"Created folder: {folder_name}")
+            except OSError as e:
+                messagebox.showerror("Error", f"Could not create folder: {e}", parent=self)
 
     def _populate_tree(self, parent_node="", path=None):
         """Recursively populate the file tree."""
@@ -172,11 +297,22 @@ class MainApplication(tk.Toplevel):
 
         if os.path.isfile(file_path):
             self.notebook.select(self.tab_frames["Edit"])
+            self.update_status(f"Opened: {os.path.basename(file_path)}")
             self.edit_tab.load_file(file_path)
 
     def _apply_colors(self):
         """Apply theme colors to non-ttk widgets."""
         self.config(bg=self.colors['bg'])
+        if self.status_bar_label:
+            status_frame = self.status_bar_label.master
+            status_frame.config(bg=self.colors['bg'])
+            self.status_bar_label.config(bg=self.colors['bg'], fg=self.colors['quote'])
+
+    def update_status(self, message, clear_after_ms=5000):
+        """Updates the status bar message, optionally clearing it after a delay."""
+        self.status_bar_label.config(text=message)
+        if clear_after_ms:
+            self.after(clear_after_ms, lambda: self.status_bar_label.config(text="Ready."))
 
     def debug_print(self, message):
         """Prints a message to the console only if debug info is enabled."""
@@ -192,7 +328,7 @@ class MainApplication(tk.Toplevel):
         """Clears and re-populates the file tree."""
         self._clear_tree()
         self._populate_tree()
-        self.debug_print("File tree refreshed.")
+        self.update_status("File tree refreshed.")
 
     def save_readme(self, content):
         """Saves the README.md file and refreshes the UI."""
@@ -200,7 +336,7 @@ class MainApplication(tk.Toplevel):
         try:
             with open(readme_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            self.debug_print(f"README.md saved to {readme_path}")
+            self.update_status("README.md saved successfully.")
             self.refresh_file_tree()
             # Open the new file in the editor for immediate viewing
             self.notebook.select(self.tab_frames["Edit"])
@@ -214,8 +350,11 @@ class MainApplication(tk.Toplevel):
         try:
             with open(roadmap_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            self.debug_print(f"roadmap.md saved to {roadmap_path}")
+            self.update_status("roadmap.md saved successfully.")
             self.refresh_file_tree()
+            # Refresh the tasks tab if it exists to show the new roadmap
+            if self.tasks_tab:
+                self.tasks_tab.load_and_display_roadmap()
             # Open the new file in the editor for immediate viewing
             self.notebook.select(self.tab_frames["Edit"])
             self.edit_tab.load_file_content(content, file_path=roadmap_path)
@@ -239,7 +378,7 @@ class MainApplication(tk.Toplevel):
             # Reload the active tier in the application after saving
             self.active_tier_name = self.app_config.get('active_tier', subscription.SubscriptionTier.FREE.value)
             self.active_tier = subscription.get_tier_by_name(self.active_tier_name)
-            self.debug_print(f"Settings saved. Active tier is now: {self.active_tier.value}")
+            self.update_status("Settings saved.")
 
     def show_login_window(self):
         """Opens the modal login window."""
@@ -250,7 +389,7 @@ class MainApplication(tk.Toplevel):
         """Callback function for when a user successfully logs in."""
         self.current_user = user
         self.active_tier = user.tier
-        self.debug_print(f"User {user.email} logged in. Active tier is now: {self.active_tier.value}")
+        self.update_status(f"Welcome, {user.email}!")
         if self.settings_tab:
             self.settings_tab.update_auth_status()
 
@@ -258,7 +397,7 @@ class MainApplication(tk.Toplevel):
         """Logs the current user out and reverts to the locally configured tier."""
         self.current_user = None
         self.active_tier = subscription.get_tier_by_name(self.app_config.get('active_tier', 'Free'))
-        self.debug_print(f"User logged out. Active tier reverted to: {self.active_tier.value}")
+        self.update_status("Successfully logged out.")
         if self.settings_tab:
             self.settings_tab.update_auth_status()
 
