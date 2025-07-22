@@ -1,11 +1,11 @@
 import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import filedialog, simpledialog, messagebox
-from typing import Self
-import theme
 import os
 import sys
 
+# Local imports
+import theme, config_manager
 # Ensure main_application is imported
 import main_application
 
@@ -20,6 +20,7 @@ class LandingPage(tk.Tk):
             on_load (callable, optional): Callback for loading a project.
         """
         super().__init__()
+        self.app_config = config_manager.load_config()
 
         # --- Set Callbacks ---
         # Use the provided on_start function, or the default project creation prompt.
@@ -180,11 +181,54 @@ class LandingPage(tk.Tk):
                 parent=self
             )
             if load_existing:
-                self.launch_main_app(project_path)
+                self.launch_main_app(project_path, file_to_open=None)
         else:
             os.makedirs(project_path, exist_ok=True)
             print(f"Created new project at: {project_path}")
-            self.launch_main_app(project_path)
+
+            file_to_open = None
+            # Check if this is the user's first time creating a project
+            if not self.app_config.get('has_run_before', False):
+                self._create_welcome_file(project_path)
+                file_to_open = "getting_started.md"
+                
+                # Update and save the config so this only runs once
+                self.app_config['has_run_before'] = True
+                config_manager.save_config(self.app_config)
+
+            self.launch_main_app(project_path, file_to_open=file_to_open)
+
+    def _create_welcome_file(self, project_path):
+        """Creates a getting_started.md file in the new project directory."""
+        welcome_content = """# Welcome to Coddy!
+
+This is your first project. Here's a quick guide to get you started.
+
+## The Coddy Workflow
+
+Coddy is designed to help you go from idea to code, fast. Here's the typical flow:
+
+### 1. 🌱 Genesis Tab
+This is where your project is born. Use the chat to brainstorm your idea. Once it's solid, ask Coddy to **Generate README** or **Generate Roadmap**.
+
+### 2. ✅ Tasks Tab
+Once you have a `roadmap.md`, this tab becomes your interactive project plan. Check off tasks as you complete them.
+
+### 3. ✍️ Edit Tab
+This is your AI-assisted coding environment. Click on any file in the "Project Files" tree to open it. Use the AI Task box to get suggestions, refactor code, and more.
+
+### 4. ⚙️ Settings Tab
+Configure Coddy to your liking. Set your Gemini API key, change the theme, and manage preferences.
+
+---
+
+Happy coding!
+"""
+        try:
+            with open(os.path.join(project_path, "getting_started.md"), 'w', encoding='utf-8') as f:
+                f.write(welcome_content)
+        except IOError as e:
+            print(f"Could not create welcome file: {e}")
 
     def _prompt_load_project(self):
         """Opens a dialog to select a project folder and prints the path."""
@@ -193,7 +237,7 @@ class LandingPage(tk.Tk):
             mustexist=True
         )
         if project_path:
-            self.launch_main_app(project_path)
+            self.launch_main_app(project_path, file_to_open=None)
         else:
             print("No project folder selected.")
 
@@ -203,14 +247,15 @@ class LandingPage(tk.Tk):
             self.main_app_window.save_settings()
         self.destroy()
 
-    def launch_main_app(self, project_path):
+    def launch_main_app(self, project_path, file_to_open=None):
         """Hides the landing page and opens the main application window."""
         self.main_app_window = None # Clear any previous reference
         self.withdraw() # Hide the landing page
         app_window = main_application.MainApplication(
             master=self,
             project_path=project_path,
-            theme_name=self.current_theme_name
+            theme_name=self.current_theme_name,
+            file_to_open=file_to_open
         )
         # When the main app window is closed, save settings and exit.
         self.main_app_window = app_window

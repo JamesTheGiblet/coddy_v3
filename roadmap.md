@@ -67,8 +67,15 @@ Coddy is being built to support the creative-coding flow: design your ideas, cha
   - [x] Sub-task: Add UI elements (input field, button) to the Edit Tab for AI interaction.
   - [x] Sub-task: Implement a handler to send the current code and user task to the AI engine in a thread.
   - [x] Sub-task: Create a new window to display the AI's suggestion.
-- [ ] Apply AI edit inline (Creator+ tier)
-- [ ] Full semantic refactor (Architect+)
+- [x] Apply AI edit inline (Creator+ tier)
+  - [x] Sub-task: Upgrade suggestion window to be interactive with "Apply" and "Cancel" buttons.
+  - [x] Sub-task: Implement logic to replace selected text or the whole file with the AI suggestion.
+  - [x] Sub-task: Add tier check for the "Apply" functionality.
+  - [x] Sub-task: Refine AI prompt to return only raw code for easier application.
+- [x] Full semantic refactor (Architect+)
+  - [x] Sub-task: Add "Full Refactor" button to the Edit Tab.
+  - [x] Sub-task: Implement a new AI engine method with a specialized prompt for deep refactoring.
+  - [x] Sub-task: Gate the feature to the "Architect" tier.
 
 ---
 
@@ -83,24 +90,37 @@ Coddy is being built to support the creative-coding flow: design your ideas, cha
 
 ### Phase 6: 👤 Auth + Tiers
 
-- [ ] Login / Signup with Firebase or JWT
-- [ ] Load user profile + active tier
-- [ ] Lock or limit features based on tier
-- [ ] Show “Upgrade” prompt on locked tools
+- [x] Login / Signup with Firebase or JWT
+  - [x] Sub-task: Create `auth.py` with a simulated user database for local testing.
+  - [x] Sub-task: Create a modal `LoginWindow` UI for login and signup forms.
+- [x] Load user profile + active tier
+  - [x] Sub-task: Implement session management (`current_user`) in `MainApplication`.
+  - [x] Sub-task: Add login/logout controls and user status display to the Settings tab.
+  - [x] Sub-task: Update the application's active tier based on the logged-in user's profile.
+- [x] Task: Implement local subscription tier simulation for testing
+  - [x] Sub-task: Create `subscription.py` to define tiers and feature access.
+  - [x] Sub-task: Add a tier selector dropdown to the Settings tab.
+  - [x] Sub-task: Load and save the selected tier via `config_manager`.
+  - [x] Sub-task: Implement feature-locking logic in `EditTab` to restrict AI suggestions.
 
 ---
 
 ### Phase 7: ⚙️ Settings Tab
 
-- [ ] Task: Implement saving of Gemini API key via `config_manager` into .env file
-  - [ ] Sub-task: Create an `Entry` widget for Gemini API key input.
-  - [ ] Sub-task: Implement focus-in/focus-out handlers for placeholder text and password masking.
-  - [ ] Sub-task: Link API key entry to `config_manager.save_gemini_key`.
-- [ ] Theme switcher
-- [ ] Task: Implement 'Unorthodox Ideas' slider for AI behavior adjustment
-  - [ ] Sub-task: Integrate a `ttk.Scale` widget for adjusting AI's 'unorthodox ideas' parameter (0-100).
-  - [ ] Sub-task: Persist slider value using `config_manager`.
-- [ ] Developer preferences (autosave, debug info)
+- [x] Task: Implement saving of Gemini API key via `config_manager` into .env file
+  - [x] Sub-task: Create an `Entry` widget for Gemini API key input.
+  - [x] Sub-task: Implement focus-in/focus-out handlers for placeholder text and password masking.
+  - [x] Sub-task: Link API key entry to `config_manager.save_gemini_key` via `MainApplication.save_settings`.
+- [x] Theme switcher
+  - [x] Sub-task: Add a theme selection combobox to the Settings tab.
+  - [x] Sub-task: Implement logic to apply and persist the selected theme immediately.
+- [x] Task: Implement 'Unorthodox Ideas' slider for AI behavior adjustment
+  - [x] Sub-task: Integrate a `ttk.Scale` widget for adjusting AI's 'unorthodox ideas' parameter (0-100).
+  - [x] Sub-task: Persist slider value using `config_manager`.
+  - [x] Sub-task: Load the saved slider value when the settings tab is opened.
+- [x] Developer preferences (autosave, debug info)
+  - [x] Sub-task: Add "Autosave" and "Debug Info" checkbuttons to the Settings tab.
+  - [x] Sub-task: Implement loading and saving of these preferences via `config_manager`.
 
 ---
 
@@ -116,6 +136,7 @@ All users can:
 
 ---
 
-## 🌟 Current Focus: Phase 4 - Edit Tab
+## 🌟 Current Focus: Polishing and Refinement
 
-- Implementing AI suggestions and refactoring in the editor.
+- Implementing developer preferences (e.g., debug info).
+- Reviewing code for quality and clarity.

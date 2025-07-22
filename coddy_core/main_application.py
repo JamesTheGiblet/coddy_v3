@@ -1,17 +1,17 @@
 import tkinter as tk
 from tkinter import ttk
 import os
-import theme
-import config_manager
-from ai.ai_engine import AIEngine
-from tabs.genesis_tab import GenesisTab
-from tabs.edit_tab import EditTab
-from tabs.settings_tab import SettingsTab
+import subscription, theme, config_manager, auth
+from .ai.ai_engine import AIEngine
+from .tabs.genesis_tab import GenesisTab
+from .tabs.edit_tab import EditTab
+from .tabs.settings_tab import SettingsTab
+from .tabs.tasks_tab import TasksTab
 
 class MainApplication(tk.Toplevel):
     """The main application window with file tree and tabs."""
 
-    def __init__(self, master, project_path, theme_name='dark'):
+    def __init__(self, master, project_path, theme_name='dark', file_to_open=None):
         super().__init__(master)
         self.project_path = project_path
         self.theme_name = theme_name
@@ -22,10 +22,18 @@ class MainApplication(tk.Toplevel):
         self.ai_engine = None
         gemini_api_key = config_manager.load_gemini_key()
         if gemini_api_key:
-            self.ai_engine = AIEngine(api_key=gemini_api_key)
+            try:
+                self.ai_engine = AIEngine(api_key=gemini_api_key)
+            except Exception as e:
+                print(f"Failed to initialize AI Engine: {e}")
         
         # Add the loaded Gemini key to the config dict for the settings tab UI
         self.app_config['gemini_api_key'] = gemini_api_key
+
+        # --- Initialize Subscription Tier ---
+        self.active_tier_name = self.app_config.get('active_tier', subscription.SubscriptionTier.FREE.value)
+        self.active_tier = subscription.get_tier_by_name(self.active_tier_name)
+        self.current_user = None
 
         self.title(f"Coddy V3 - {os.path.basename(project_path)}")
         self.geometry("1200x800")
@@ -35,6 +43,12 @@ class MainApplication(tk.Toplevel):
         self._create_widgets()
         self._populate_tree()
         self._apply_colors()
+
+        # If a specific file was requested to be opened on launch (e.g., welcome file)
+        if file_to_open:
+            full_path = os.path.join(project_path, file_to_open)
+            if os.path.exists(full_path):
+                self.edit_tab.load_file(full_path)
 
     def _configure_styles(self):
         """Configure ttk styles for the current theme."""
@@ -60,6 +74,10 @@ class MainApplication(tk.Toplevel):
                   background=[("selected", self.colors['accent'])],
                   foreground=[("selected", self.colors['button_fg'])])
 
+        # Link-style button for login/signup switching
+        style.configure("Link.TButton", foreground=self.colors['accent'], borderwidth=0, background=self.colors['bg'])
+        style.map("Link.TButton", background=[('active', self.colors['bg'])])
+
     def _initialize_widget_holders(self):
         """Initialize holders for widgets that need to be accessed later."""
         self.tree = None
@@ -67,6 +85,7 @@ class MainApplication(tk.Toplevel):
         self.edit_tab = None
         self.settings_tab = None
         self.genesis_tab = None
+        self.tasks_tab = None
 
     def _create_widgets(self):
         """Create the main layout and widgets."""
@@ -75,10 +94,20 @@ class MainApplication(tk.Toplevel):
         paned_window.pack(fill=tk.BOTH, expand=True)
 
         # Left pane: File Tree
-        tree_frame = ttk.Frame(paned_window, width=300)
-        self.tree = ttk.Treeview(tree_frame)
+        tree_container = ttk.Frame(paned_window, width=300)
+        paned_window.add(tree_container, weight=1)
+
+        # Header for the file tree with a refresh button
+        tree_header = ttk.Frame(tree_container)
+        tree_header.pack(fill=tk.X, padx=2, pady=2)
+        
+        ttk.Label(tree_header, text="Project Files").pack(side=tk.LEFT, padx=5)
+        
+        refresh_button = ttk.Button(tree_header, text="🔄 Refresh", command=self.refresh_file_tree)
+        refresh_button.pack(side=tk.RIGHT)
+
+        self.tree = ttk.Treeview(tree_container)
         self.tree.pack(fill=tk.BOTH, expand=True)
-        paned_window.add(tree_frame, weight=1)
 
         # Right pane: Tabs
         self.notebook = ttk.Notebook(paned_window)
@@ -98,11 +127,14 @@ class MainApplication(tk.Toplevel):
                 self.edit_tab = EditTab(tab_frame, self.colors, self)
                 self.edit_tab.pack(fill=tk.BOTH, expand=True)
             elif name == "Settings":
-                self.settings_tab = SettingsTab(tab_frame, self.colors, self.app_config)
+                self.settings_tab = SettingsTab(tab_frame, self.colors, self)
                 self.settings_tab.pack(fill=tk.BOTH, expand=True)
             elif name == "Genesis":
                 self.genesis_tab = GenesisTab(tab_frame, self.colors, self.app_config, self.ai_engine, self)
                 self.genesis_tab.pack(fill=tk.BOTH, expand=True)
+            elif name == "Tasks":
+                self.tasks_tab = TasksTab(tab_frame, self.colors, self)
+                self.tasks_tab.pack(fill=tk.BOTH, expand=True)
             else:
                 placeholder = tk.Label(tab_frame, text=f"Content for {name} Tab", font=("Helvetica", 16))
                 placeholder.pack(pady=50)
@@ -143,6 +175,11 @@ class MainApplication(tk.Toplevel):
         """Apply theme colors to non-ttk widgets."""
         self.config(bg=self.colors['bg'])
 
+    def debug_print(self, message):
+        """Prints a message to the console only if debug info is enabled."""
+        if self.app_config.get('developer_debug_info', False):
+            print(f"[DEBUG] {message}")
+
     def _clear_tree(self):
         """Deletes all items from the treeview."""
         for item in self.tree.get_children():
@@ -152,7 +189,7 @@ class MainApplication(tk.Toplevel):
         """Clears and re-populates the file tree."""
         self._clear_tree()
         self._populate_tree()
-        print("File tree refreshed.")
+        self.debug_print("File tree refreshed.")
 
     def save_readme(self, content):
         """Saves the README.md file and refreshes the UI."""
@@ -160,11 +197,11 @@ class MainApplication(tk.Toplevel):
         try:
             with open(readme_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            print(f"README.md saved to {readme_path}")
+            self.debug_print(f"README.md saved to {readme_path}")
             self.refresh_file_tree()
             # Open the new file in the editor for immediate viewing
             self.notebook.select(self.tab_frames["Edit"])
-            self.edit_tab.load_file_content(content)
+            self.edit_tab.load_file_content(content, file_path=readme_path)
         except IOError as e:
             print(f"Error saving README.md: {e}")
 
@@ -174,11 +211,11 @@ class MainApplication(tk.Toplevel):
         try:
             with open(roadmap_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            print(f"roadmap.md saved to {roadmap_path}")
+            self.debug_print(f"roadmap.md saved to {roadmap_path}")
             self.refresh_file_tree()
             # Open the new file in the editor for immediate viewing
             self.notebook.select(self.tab_frames["Edit"])
-            self.edit_tab.load_file_content(content)
+            self.edit_tab.load_file_content(content, file_path=roadmap_path)
         except IOError as e:
             print(f"Error saving roadmap.md: {e}")
 
@@ -195,11 +232,41 @@ class MainApplication(tk.Toplevel):
             # Save the rest of the settings to the JSON config file
             self.app_config.update(settings_data)
             config_manager.save_config(self.app_config)
-            print("Settings saved.")
+
+            # Reload the active tier in the application after saving
+            self.active_tier_name = self.app_config.get('active_tier', subscription.SubscriptionTier.FREE.value)
+            self.active_tier = subscription.get_tier_by_name(self.active_tier_name)
+            self.debug_print(f"Settings saved. Active tier is now: {self.active_tier.value}")
+
+    def show_login_window(self):
+        """Opens the modal login window."""
+        from .ui.login_window import LoginWindow # Local import to avoid circular dependency
+        LoginWindow(self, on_success_callback=self._handle_login_success)
+
+    def _handle_login_success(self, user: auth.User):
+        """Callback function for when a user successfully logs in."""
+        self.current_user = user
+        self.active_tier = user.tier
+        self.debug_print(f"User {user.email} logged in. Active tier is now: {self.active_tier.value}")
+        if self.settings_tab:
+            self.settings_tab.update_auth_status()
+
+    def logout(self):
+        """Logs the current user out and reverts to the locally configured tier."""
+        self.current_user = None
+        self.active_tier = subscription.get_tier_by_name(self.app_config.get('active_tier', 'Free'))
+        self.debug_print(f"User logged out. Active tier reverted to: {self.active_tier.value}")
+        if self.settings_tab:
+            self.settings_tab.update_auth_status()
 
     def switch_theme(self, theme_name):
         """Public method to allow theme switching from outside."""
         self.theme_name = theme_name
+
+        # Persist the theme change
+        self.app_config['theme'] = theme_name
+        config_manager.save_config(self.app_config)
+
         self.colors = theme.get_theme(self.theme_name)
         self._configure_styles()
         self._apply_colors()
@@ -215,6 +282,9 @@ class MainApplication(tk.Toplevel):
             elif name == "Genesis":
                 if self.genesis_tab:
                     self.genesis_tab.apply_colors(self.colors)
+            elif name == "Tasks":
+                if self.tasks_tab:
+                    self.tasks_tab.apply_colors(self.colors)
             else:
                 # Handle placeholder labels in other tabs
                 for child in frame.winfo_children():

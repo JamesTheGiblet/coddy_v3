@@ -16,7 +16,16 @@ class AIEngine:
 
     def start_new_chat(self):
         """Starts a new, stateful chat session."""
-        self.chat = self.model.start_chat(history=[])
+        system_instruction = """
+You are Coddy, a creative and helpful AI coding assistant.
+Your goal is to help the user brainstorm and define a new software project.
+Be encouraging and ask clarifying questions.
+Guide the user towards creating a tangible plan.
+When the user has a clear idea, suggest that you can generate a README file or a full project roadmap for them.
+Keep your responses concise and friendly.
+"""
+        self.chat = self.model.start_chat(history=[{'role': 'user', 'parts': [system_instruction]},
+                                                   {'role': 'model', 'parts': ["Hello! I'm Coddy. What brilliant idea are we working on today?"]}])
 
     def get_chat_response(self, prompt):
         """
@@ -43,20 +52,109 @@ class AIEngine:
 
         system_prompt = f"""
 You are an expert software engineering assistant named Coddy.
-A user has provided a code snippet and a request for a modification or suggestion.
-Your task is to analyze the code and the request, and provide a helpful, well-explained response.
-Format your response using Markdown. If you provide a modified code block, explain what you changed and why.
+A user has provided a code snippet and a request. Your task is to modify the code as requested.
+IMPORTANT: You MUST return ONLY the raw, modified code block. Do NOT include any explanations, conversational text, or markdown formatting like ```python.
+Your entire response should be ONLY the code, ready to be pasted directly back into an editor.
 
 User's Request: "{user_prompt}"
 
-Analyze the following code snippet:
-```
+Modify the following code:
+---
 {code_snippet}
-```
+---
+"""
+        try:
+            response = self.model.generate_content(system_prompt)
+            # Clean up potential markdown code fences that the model might still add
+            cleaned_text = response.text.strip()
+            if cleaned_text.startswith("```") and cleaned_text.endswith("```"):
+                cleaned_text = "\n".join(cleaned_text.splitlines()[1:-1])
+            return cleaned_text
+        except Exception as e:
+            print(f"Error during AI code suggestion generation: {e}")
+            raise e # Re-raise to be caught by the UI thread
+
+    def get_full_refactor(self, code_snippet):
+        """
+        Generates a full semantic refactor of a given code snippet.
+        """
+        if not self.model:
+            raise ConnectionError("AI model is not initialized. Please check your API key.")
+
+        system_prompt = f"""
+You are an expert software architect named Coddy.
+Your task is to perform a full, semantic refactoring of the provided code.
+Analyze the code for structure, clarity, efficiency, and adherence to best practices.
+Improve variable names, function signatures, and overall architecture without altering the public-facing functionality.
+Add comments where complex logic requires explanation.
+
+IMPORTANT: You MUST return ONLY the raw, refactored code block. Do NOT include any explanations, conversational text, or markdown formatting like ```python.
+Your entire response should be ONLY the code, ready to be pasted directly back into an editor.
+
+Refactor the following code:
+---
+{code_snippet}
+---
+"""
+        try:
+            response = self.model.generate_content(system_prompt)
+            cleaned_text = response.text.strip()
+            if cleaned_text.startswith("```") and cleaned_text.endswith("```"):
+                cleaned_text = "\n".join(cleaned_text.splitlines()[1:-1])
+            return cleaned_text
+        except Exception as e:
+            print(f"Error during AI full refactor generation: {e}")
+            raise e # Re-raise to be caught by the UI thread
+
+    def get_session_summary(self, roadmap_content):
+        """
+        Analyzes the project's roadmap and provides a summary of progress.
+        """
+        if not self.model:
+            raise ConnectionError("AI model is not initialized. Please check your API key.")
+
+        system_prompt = f"""
+You are an expert project manager named Coddy.
+Your task is to analyze the following `roadmap.md` file content.
+Pay close attention to tasks marked with `[x]` (completed) versus `[ ]` (pending).
+Your tone should be positive and motivational. Provide a brief, insightful summary of the project's status.
+Mention what has been accomplished and what the key next steps are.
+Format the output as a concise, easy-to-read status report.
+
+Roadmap Content:
+---
+{roadmap_content}
+---
 """
         try:
             response = self.model.generate_content(system_prompt)
             return response.text
         except Exception as e:
-            print(f"Error during AI code suggestion generation: {e}")
-            raise e # Re-raise to be caught by the UI thread
+            print(f"Error during AI session summary generation: {e}")
+            raise e
+
+    def get_auto_planned_roadmap(self, project_goal):
+        """
+        Generates a new roadmap.md file content from a high-level goal.
+        """
+        if not self.model:
+            raise ConnectionError("AI model is not initialized. Please check your API key.")
+
+        system_prompt = f"""
+You are an expert project planner and software architect named Coddy.
+Your task is to take a high-level project goal and break it down into a detailed, phase-based roadmap in Markdown format.
+The roadmap should be structured with `### Phase X:` headers, followed by a list of tasks using the `- [ ] Task description` format.
+The plan should be logical, starting from setup and design, moving through implementation of core features, and ending with polish and deployment.
+
+IMPORTANT: The output MUST be only the raw Markdown content for the `roadmap.md` file. Do not include any other text, conversation, or explanations.
+
+The user's project goal is: "{project_goal}"
+
+Generate the `roadmap.md` content now.
+"""
+        try:
+            response = self.model.generate_content(system_prompt)
+            return response.text
+        except Exception as e:
+            print(f"Error during AI auto-planning generation: {e}")
+            raise e
