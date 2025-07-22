@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 import threading
 
-
 class GenesisTab(tk.Frame):
     """
     The UI for the Genesis tab, where users chat with the AI to build the project foundation.

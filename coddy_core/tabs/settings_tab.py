@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-import subscription, theme
+from .. import subscription, theme
 
 class SettingsTab(tk.Frame):
     """

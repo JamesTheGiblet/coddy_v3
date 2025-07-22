@@ -38,3 +38,7 @@ THEMES = {
 def get_theme(name='dark'):
     """Returns the color dictionary for a given theme name."""
     return THEMES.get(name, THEMES['dark'])
+
+def get_theme_names():
+    """Returns a list of available theme names."""
+    return list(THEMES.keys())

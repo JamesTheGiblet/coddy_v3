@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import os
-import subscription, theme, config_manager, auth
+from . import auth, config_manager, subscription, theme
 from .ai.ai_engine import AIEngine
 from .tabs.genesis_tab import GenesisTab
 from .tabs.edit_tab import EditTab
@@ -43,6 +43,9 @@ class MainApplication(tk.Toplevel):
         self._create_widgets()
         self._populate_tree()
         self._apply_colors()
+
+        # Set the close protocol for this window
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # If a specific file was requested to be opened on launch (e.g., welcome file)
         if file_to_open:
@@ -258,6 +261,11 @@ class MainApplication(tk.Toplevel):
         self.debug_print(f"User logged out. Active tier reverted to: {self.active_tier.value}")
         if self.settings_tab:
             self.settings_tab.update_auth_status()
+
+    def on_close(self):
+        """Handles window close event, saves settings, and exits the app."""
+        self.save_settings()
+        self.master.destroy()
 
     def switch_theme(self, theme_name):
         """Public method to allow theme switching from outside."""

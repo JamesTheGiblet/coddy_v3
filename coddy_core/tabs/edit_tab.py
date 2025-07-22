@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, Toplevel, scrolledtext
 import threading
-import subscription
+from .. import subscription
 
 class EditTab(tk.Frame):
     """

@@ -1,6 +1,3 @@
-Here's the updated `README.md` for Coddy V3, reflecting the changes in its setup and technologies:
-
-```markdown
 # 📦 Coddy V3
 
 **Coddy V3** is your vibe-coding companion — a desktop application that fuses creative coding with AI-powered automation. Designed to free developers from repetitive tasks, Coddy leverages LLMs to help you **brainstorm**, **plan**, **generate**, **refactor**, and **evolve** projects — all while adapting to your unique coding style.
@@ -99,8 +96,6 @@ Coddy learns your intent and adjusts accordingly:
 
 ## 🗂️ File Structure
 
-```
-
 coddy-v3/
 ├── coddy\_core/       \# Core Python application logic and UI
 │   ├── ai/           \# AI engine integration (e.g., Gemini)
@@ -116,22 +111,20 @@ coddy-v3/
 ├── LICENSE           \# Project license
 └── .gitignore        \# Files to ignore in version control
 
-````
-
 ---
 
 ## 🏁 Getting Started
 
 To get Coddy V3 up and running on your local machine, follow these steps:
 
-1.  **Clone the repository:**
+1. **Clone the repository:**
 
     ```bash
     git clone [https://github.com/yourusername/coddy-v3](https://github.com/yourusername/coddy-v3) # Replace with the actual repository URL
     cd coddy-v3
     ```
 
-2.  **🐍 Python Setup:**
+2. **🐍 Python Setup:**
     Create a virtual environment to manage dependencies:
 
     ```bash
@@ -139,30 +132,38 @@ To get Coddy V3 up and running on your local machine, follow these steps:
     ```
 
     Activate the virtual environment:
+
     * On macOS/Linux:
+
         ```bash
         source .venv/bin/activate
         ```
+
     * On Windows:
+
         ```bash
         .venv\Scripts\activate
         ```
 
     Install Python dependencies. If you have a `requirements.txt` file, use:
+
     ```bash
     pip install -r requirements.txt
     ```
+
     Otherwise, ensure you have these core libraries installed:
+
     ```bash
     pip install google-generativeai python-dotenv
     ```
+
     *Tkinter is typically included with Python installations.*
 
-3.  **🚀 Running the Application:**
-    From the project root directory, execute the main application script:
+3. **🚀 Running the Application:**
+    From the project root directory (`coddy-v3/`), run the `coddy_core` package as a module:
 
     ```bash
-    python coddy_core/app.py
+    python -m coddy_core.app
     ```
 
 ---
@@ -194,4 +195,3 @@ MIT
 
 Ready to vibe?
 Run `Coddy`, start a project, and let the ideas flow — weird or otherwise. 🧠✨
-````

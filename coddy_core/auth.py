@@ -1,5 +1,5 @@
 import dataclasses
-import subscription
+from . import subscription
 
 @dataclasses.dataclass
 class User:

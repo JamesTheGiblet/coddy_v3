@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox, simpledialog
 import os
 import re
 import threading
-import subscription
+from .. import subscription
 
 class TasksTab(tk.Frame):
     """

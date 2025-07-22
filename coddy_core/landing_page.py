@@ -5,28 +5,20 @@ import os
 import sys
 
 # Local imports
-import theme, config_manager
+from . import config_manager, theme
 # Ensure main_application is imported
-import main_application
+from . import main_application
 
-class LandingPage(tk.Tk):
-    def __init__(self, theme_name='dark', on_start=None, on_load=None):
+class LandingPage(tk.Toplevel):
+    def __init__(self, master, theme_name='dark', *args, **kwargs):
         """
         Initialize the CoddyLandingPage window.
-
-        Args:
-            theme_name (str): The name of the theme to use.
-            on_start (callable, optional): Callback for starting a project.
-            on_load (callable, optional): Callback for loading a project.
         """
-        super().__init__()
+        super().__init__(master, *args, **kwargs)
         self.app_config = config_manager.load_config()
-
-        # --- Set Callbacks ---
-        # Use the provided on_start function, or the default project creation prompt.
-        self.on_start_callback = on_start if on_start else self._prompt_start_project
-        # Use the provided on_load function, or the default folder prompt.
-        self.on_load_callback = on_load if on_load else self._prompt_load_project
+        self.main_app_window = None
+        # When this window is closed, the entire application should exit.
+        self.protocol("WM_DELETE_WINDOW", self.master.destroy)
         self.current_theme_name = theme_name
 
         # --- Window Configuration ---
@@ -115,8 +107,7 @@ class LandingPage(tk.Tk):
         self.start_button = tk.Button(
             self.action_frame,
             text="Start a Project",
-            font=self.button_font,
-            command=self.on_start_callback,
+            font=self.button_font, command=self._prompt_start_project,
             padx=15, pady=5,
             relief=tk.FLAT,
             borderwidth=0,
@@ -130,8 +121,7 @@ class LandingPage(tk.Tk):
         self.load_button = tk.Button(
             self.action_frame,
             text="Load a Project",
-            font=self.button_font,
-            command=self.on_load_callback,
+            font=self.button_font, command=self._prompt_load_project,
             padx=15, pady=5, relief=tk.FLAT, borderwidth=0,
             cursor="hand2"
         )
@@ -241,25 +231,17 @@ Happy coding!
         else:
             print("No project folder selected.")
 
-    def _on_app_close(self):
-        """Handles the main application window closing event."""
-        if self.main_app_window:
-            self.main_app_window.save_settings()
-        self.destroy()
-
     def launch_main_app(self, project_path, file_to_open=None):
         """Hides the landing page and opens the main application window."""
-        self.main_app_window = None # Clear any previous reference
-        self.withdraw() # Hide the landing page
-        app_window = main_application.MainApplication(
-            master=self,
+        # Create the main window, which will set its own close protocol
+        main_application.MainApplication(
+            master=self.master,
             project_path=project_path,
             theme_name=self.current_theme_name,
             file_to_open=file_to_open
         )
-        # When the main app window is closed, save settings and exit.
-        self.main_app_window = app_window
-        app_window.protocol("WM_DELETE_WINDOW", self._on_app_close)
+        # Destroy the landing page as the main app is now open
+        self.destroy()
 
     def switch_theme(self, theme_name):
         """Loads a new theme and applies the colors to all widgets."""
@@ -292,10 +274,3 @@ Happy coding!
         # Style the theme buttons to be more subtle
         for btn in self.theme_buttons:
             btn.config(bg=self.colors['bg'], fg=self.colors['quote'], relief=tk.FLAT, borderwidth=0, activeforeground=self.colors['fg'])
-
-if __name__ == "__main__":
-    # To see the light theme, change 'dark' to 'light'
-    # The CoddyLandingPage now handles the load action by default.
-    # A custom on_load function can still be passed to override this.
-    app = LandingPage(theme_name='dark')
-    app.mainloop()
