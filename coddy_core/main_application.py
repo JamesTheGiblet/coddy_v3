@@ -32,8 +32,11 @@ class MainApplication(tk.Toplevel):
         self.app_config['gemini_api_key'] = gemini_api_key
 
         # --- Initialize Subscription Tier ---
-        self.active_tier_name = self.app_config.get('active_tier', subscription.SubscriptionTier.FREE.value)
-        self.active_tier = subscription.get_tier_by_name(self.active_tier_name)
+        # When logged out, the application always defaults to the FREE tier.
+        # The 'active_tier' in the config is only for setting the initial
+        # state of the testing dropdown in the Settings tab, not the app's functional tier.
+        self.active_tier = subscription.SubscriptionTier.FREE
+        self.active_tier_name = self.active_tier.value
         self.current_user = None
 
         self.title(f"Coddy V3 - {os.path.basename(project_path)}")
@@ -53,6 +56,9 @@ class MainApplication(tk.Toplevel):
             full_path = os.path.join(project_path, file_to_open)
             if os.path.exists(full_path):
                 self.edit_tab.load_file(full_path)
+
+        # Set initial UI state for the default (logged-out) profile
+        self._update_auth_ui()
 
     def _configure_styles(self):
         """Configure ttk styles for the current theme."""
@@ -361,6 +367,26 @@ class MainApplication(tk.Toplevel):
         except IOError as e:
             print(f"Error saving roadmap.md: {e}")
 
+    def create_and_open_file(self, file_name, content=""):
+        """Creates a new file in the project root and opens it in the editor."""
+        new_path = os.path.join(self.project_path, file_name)
+        
+        if os.path.exists(new_path):
+            self.update_status(f"'{file_name}' already exists, opening it.")
+        else:
+            try:
+                with open(new_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                self.update_status(f"Created and opened '{file_name}'")
+                self.refresh_file_tree()
+            except OSError as e:
+                messagebox.showerror("Error", f"Could not create file: {e}", parent=self)
+                return
+
+        # Open the file in the editor
+        self.notebook.select(self.tab_frames["Edit"])
+        self.edit_tab.load_file(new_path)
+
     def save_settings(self):
         """Gathers settings from tabs and saves them to the config file."""
         if self.settings_tab:
@@ -371,13 +397,21 @@ class MainApplication(tk.Toplevel):
             if new_api_key is not None: # A value of None means "no change"
                 config_manager.save_gemini_key(new_api_key)
 
+            # If a user is logged in, their tier is managed by their session.
+            # Do not save the tier from the (disabled) combobox.
+            if self.current_user:
+                if 'active_tier' in settings_data:
+                    del settings_data['active_tier']
+
             # Save the rest of the settings to the JSON config file
             self.app_config.update(settings_data)
             config_manager.save_config(self.app_config)
 
-            # Reload the active tier in the application after saving
-            self.active_tier_name = self.app_config.get('active_tier', subscription.SubscriptionTier.FREE.value)
-            self.active_tier = subscription.get_tier_by_name(self.active_tier_name)
+            # If logged out, the active tier is whatever was just saved in the config.
+            if not self.current_user:
+                self.active_tier_name = self.app_config.get('active_tier', subscription.SubscriptionTier.FREE.value)
+                self.active_tier = subscription.get_tier_by_name(self.active_tier_name)
+            
             self.update_status("Settings saved.")
 
     def show_login_window(self):
@@ -385,26 +419,65 @@ class MainApplication(tk.Toplevel):
         from .ui.login_window import LoginWindow # Local import to avoid circular dependency
         LoginWindow(self, on_success_callback=self._handle_login_success)
 
+    def update_all_auth_dependent_ui(self):
+        """Refreshes UI elements across all tabs that depend on the active tier."""
+        self._update_auth_ui() # This already handles Genesis and Settings tabs
+        if self.tasks_tab:
+            # This will re-render the tasks, checking permissions for buttons again
+            self.tasks_tab.load_and_display_roadmap()
+        # Add other tabs here if they have tier-dependent UI
+
+    def _update_auth_ui(self):
+        """Central method to update all UI components based on auth status."""
+        # Update the settings tab (login button, status label, etc.)
+        if self.settings_tab:
+            self.settings_tab.update_auth_status()
+
+        # A logged-out user (default profile) has restricted access.
+        # The Genesis tab is for project creation and requires a user session.
+        if self.current_user:
+            self.notebook.tab(self.tab_frames["Genesis"], state="normal")
+        else:
+            self.notebook.tab(self.tab_frames["Genesis"], state="disabled")
+
     def _handle_login_success(self, user: auth.User):
         """Callback function for when a user successfully logs in."""
         self.current_user = user
         self.active_tier = user.tier
         self.update_status(f"Welcome, {user.email}!")
-        if self.settings_tab:
-            self.settings_tab.update_auth_status()
+        self._update_auth_ui()
 
     def logout(self):
-        """Logs the current user out and reverts to the locally configured tier."""
+        """Logs the current user out and reverts to the default FREE tier."""
+        # If the currently selected tab is the one we're about to disable,
+        # switch to a different tab first.
+        if self.notebook.select() == self.tab_frames["Genesis"]:
+            self.notebook.select(self.tab_frames["Edit"])
+
         self.current_user = None
-        self.active_tier = subscription.get_tier_by_name(self.app_config.get('active_tier', 'Free'))
+        # When logging out, always revert to the default FREE tier.
+        self.active_tier = subscription.SubscriptionTier.FREE
+        self.active_tier_name = self.active_tier.value
         self.update_status("Successfully logged out.")
-        if self.settings_tab:
-            self.settings_tab.update_auth_status()
+        self._update_auth_ui()
 
     def on_close(self):
         """Handles window close event, saves settings, and exits the app."""
         self.save_settings()
         self.master.destroy()
+
+    def execute_code_generation_for_task(self, task_text: str):
+        """Switches to the Edit tab and executes the AI suggestion flow for a given task."""
+        if self.edit_tab:
+            self.notebook.select(self.tab_frames["Edit"])
+            self.edit_tab.execute_ai_suggestion(task_text)
+            self.update_status(f"Ready to generate code for: '{task_text[:40]}...'")
+
+    def mark_task_as_complete(self, task_text: str):
+        """Tells the Tasks tab to mark a specific task as complete."""
+        if self.tasks_tab:
+            self.tasks_tab.complete_task_by_text(task_text)
+            self.update_status(f"Task completed: '{task_text[:40]}...'")
 
     def switch_theme(self, theme_name):
         """Public method to allow theme switching from outside."""

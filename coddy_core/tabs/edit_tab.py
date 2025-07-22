@@ -1,7 +1,10 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, Toplevel, scrolledtext
+from tkinter import ttk, messagebox, Toplevel, scrolledtext, filedialog
+import os
 import threading
+import re
 from .. import subscription
+from ..ui.code_editor import CodeEditor
 
 class EditTab(tk.Frame):
     """
@@ -18,6 +21,8 @@ class EditTab(tk.Frame):
         self.current_file_path = None
         self.suggestion_scope = None
         self.selection_indices = None
+        self.active_ai_task = None # Track if AI was triggered from Tasks tab
+        self.suggested_filename = None
 
         self._create_widgets()
         self.apply_colors(self.colors) # Apply initial colors
@@ -33,13 +38,10 @@ class EditTab(tk.Frame):
         editor_frame.rowconfigure(0, weight=1)
         editor_frame.columnconfigure(0, weight=1)
 
-        self.text_editor = tk.Text(editor_frame, wrap=tk.WORD, relief=tk.FLAT, borderwidth=0, undo=True)
-        scrollbar = ttk.Scrollbar(editor_frame, orient=tk.VERTICAL, command=self.text_editor.yview)
-        self.text_editor.config(yscrollcommand=scrollbar.set)
-        self.text_editor.bind("<<Modified>>", self._on_text_modified)
-
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.text_editor.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Replace the basic Text widget with our new CodeEditor
+        self.code_editor = CodeEditor(editor_frame, self.colors)
+        self.code_editor.pack(fill="both", expand=True)
+        self.code_editor.text.bind("<<Modified>>", self._on_text_modified, add=True)
 
         # --- AI Interaction Frame ---
         ai_frame = ttk.Frame(self)
@@ -62,39 +64,67 @@ class EditTab(tk.Frame):
 
     def load_file(self, file_path):
         """Loads content from a file into the text editor."""
+        self.suggested_filename = None
         self.current_file_path = file_path
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            self.load_file_content(content, file_path=file_path)
+            self.load_file_content(content, file_path=file_path, highlight=True)
         except Exception as e:
             error_message = f"Could not read file:\n{file_path}\n\nError: {e}"
             self.load_file_content(error_message, file_path=None)
 
-    def load_file_content(self, content, file_path=None):
+    def load_file_content(self, content, file_path=None, highlight=False):
         """Loads raw string content into the text editor."""
+        self.suggested_filename = None
         self.current_file_path = file_path
-        self.text_editor.delete('1.0', tk.END)
-        self.text_editor.insert('1.0', content)
-        self.text_editor.edit_reset() # Clear the undo stack for the new file
-        self.text_editor.edit_modified(False) # Reset modified flag to prevent autosave on load
+        self.code_editor.text.delete('1.0', tk.END)
+        self.code_editor.text.insert('1.0', content)
+        self.code_editor.text.edit_reset() # Clear the undo stack for the new file
+        if highlight:
+            self.code_editor.trigger_highlight()
+        self.code_editor.text.edit_modified(False) # Reset modified flag to prevent autosave on load
 
     def save_current_file(self, autosave=False):
-        """Saves the content of the text editor to the current file."""
-        if not self.current_file_path:
-            if not autosave: # Only show warning on manual save
-                messagebox.showwarning("Save Error", "No file is currently open to save.")
-            return
+        """Saves the content of the text editor to the current file.
+           If no file is open, prompts the user with a 'Save As' dialog.
+        """
+        path_to_save = self.current_file_path
+        is_new_file = False
+
+        if not path_to_save:
+            if autosave: # Don't show 'Save As' for autosave on an untitled buffer
+                return
+            
+            is_new_file = True
+            path_to_save = filedialog.asksaveasfilename(
+                initialdir=self.app_logic.project_path,
+                title="Save New File",
+                initialfile=self.suggested_filename,
+                defaultextension=".py",
+                filetypes=[("Python Files", "*.py"), ("Text Files", "*.txt"), ("All Files", "*.*")],
+                parent=self
+            )
+            if not path_to_save:
+                return # User cancelled the dialog
+            
+            self.current_file_path = path_to_save
+            # Clear the suggested name after it has been used
+            self.suggested_filename = None
+
         try:
-            content = self.text_editor.get("1.0", "end-1c") # Exclude the final newline
-            with open(self.current_file_path, 'w', encoding='utf-8') as f:
+            content = self.code_editor.text.get("1.0", "end-1c")
+            with open(path_to_save, 'w', encoding='utf-8') as f:
                 f.write(content)
             
             if autosave:
-                self.app_logic.debug_print(f"Autosaved: {self.current_file_path}")
-
+                self.app_logic.debug_print(f"Autosaved: {os.path.basename(path_to_save)}")
+            else:
+                self.app_logic.update_status(f"Saved: {os.path.basename(path_to_save)}")
+            if is_new_file:
+                self.app_logic.refresh_file_tree()
         except Exception as e:
-            messagebox.showerror("Save Error", f"Could not save file:\n{self.current_file_path}\n\nError: {e}")
+            messagebox.showerror("Save Error", f"Could not save file:\n{path_to_save}\n\nError: {e}")
 
     def _on_text_modified(self, event=None):
         """Handles the event when the text editor content is modified."""
@@ -105,9 +135,8 @@ class EditTab(tk.Frame):
         # The <<Modified>> event is only fired once until the modified flag is reset.
         # We must reset it to be able to catch the next modification.
         try:
-            # Check if widget exists before trying to modify it
-            if self.text_editor.winfo_exists():
-                self.text_editor.edit_modified(False)
+            if self.code_editor.text.winfo_exists():
+                self.code_editor.text.edit_modified(False)
         except tk.TclError:
             pass # Widget might be destroyed during shutdown
 
@@ -115,6 +144,27 @@ class EditTab(tk.Frame):
         """
         Gets the selected code, the user's task, and asks the AI for a suggestion in a new thread.
         """
+        # This is a manual request, so clear any task tracking
+        self.active_ai_task = None
+        user_prompt = self.ai_task_entry.get()
+        self._run_suggestion_flow(user_prompt)
+
+    def execute_ai_suggestion(self, task_text):
+        """
+        Programmatically triggers the AI suggestion flow for a specific task.
+        """
+        self.set_ai_task(task_text)
+        self.active_ai_task = task_text
+        self._run_suggestion_flow(task_text)
+
+    def _run_suggestion_flow(self, prompt):
+        """
+        Core logic to get code, check tiers, and run the AI suggestion thread.
+        """
+        if not prompt:
+            messagebox.showwarning("Input Required", "Please enter a task for the AI (e.g., 'refactor this' or 'add comments').")
+            return
+
         # --- Tier Check ---
         if not subscription.is_feature_enabled(self.app_logic.active_tier, subscription.Feature.AI_SUGGESTION):
             messagebox.showinfo(
@@ -124,30 +174,21 @@ class EditTab(tk.Frame):
             )
             return
 
-        user_prompt = self.ai_task_entry.get()
-        if not user_prompt:
-            messagebox.showwarning("Input Required", "Please enter a task for the AI (e.g., 'refactor this' or 'add comments').")
-            return
-
         try:
             # Get selected text, or all text if nothing is selected
-            self.selection_indices = (self.text_editor.index(tk.SEL_FIRST), self.text_editor.index(tk.SEL_LAST))
-            code_snippet = self.text_editor.get(self.selection_indices[0], self.selection_indices[1])
+            self.selection_indices = (self.code_editor.text.index(tk.SEL_FIRST), self.code_editor.text.index(tk.SEL_LAST))
+            code_snippet = self.code_editor.text.get(self.selection_indices[0], self.selection_indices[1])
             self.suggestion_scope = 'selection'
         except tk.TclError:
-            code_snippet = self.text_editor.get("1.0", tk.END)
+            code_snippet = self.code_editor.text.get("1.0", tk.END)
             self.suggestion_scope = 'all'
             self.selection_indices = None
-
-        if not code_snippet.strip():
-            messagebox.showwarning("Code Required", "Please select some code or open a file to get a suggestion.")
-            return
 
         self._toggle_ai_widgets(enabled=False)
 
         threading.Thread(
             target=self._run_ai_suggestion_thread,
-            args=(user_prompt, code_snippet),
+            args=(prompt, code_snippet),
             daemon=True
         ).start()
 
@@ -164,7 +205,7 @@ class EditTab(tk.Frame):
             )
             return
 
-        code_snippet = self.text_editor.get("1.0", tk.END)
+        code_snippet = self.code_editor.text.get("1.0", tk.END)
         if not code_snippet.strip():
             messagebox.showwarning("Code Required", "Please open a file to refactor.")
             return
@@ -198,8 +239,16 @@ class EditTab(tk.Frame):
         Worker function that calls the AI engine and schedules the result to be displayed.
         """
         try:
-            suggestion = self.app_logic.ai_engine.get_code_suggestion(user_prompt, code_snippet)
-            self.after(0, self._display_suggestion, suggestion)
+            # AI now returns a dictionary
+            response_data = self.app_logic.ai_engine.get_code_suggestion(user_prompt, code_snippet)
+            
+            # Set the suggested filename if the AI provided one
+            self.suggested_filename = response_data.get('filename')
+            
+            # Get the code to display
+            code_suggestion = response_data.get('code', "AI response was not in the expected format.")
+
+            self.after(0, self._display_suggestion, code_suggestion)
         except Exception as e:
             self.after(0, messagebox.showerror, "AI Error", f"An error occurred while getting a suggestion:\n{e}")
         finally:
@@ -251,11 +300,20 @@ class EditTab(tk.Frame):
         try:
             if self.suggestion_scope == 'selection' and self.selection_indices:
                 start, end = self.selection_indices
-                self.text_editor.delete(start, end)
-                self.text_editor.insert(start, new_content.strip())
+                self.code_editor.text.delete(start, end)
+                self.code_editor.text.insert(start, new_content.strip())
             elif self.suggestion_scope == 'all':
-                self.text_editor.delete("1.0", tk.END)
-                self.text_editor.insert("1.0", new_content.strip())
+                self.code_editor.text.delete("1.0", tk.END)
+                self.code_editor.text.insert("1.0", new_content.strip())
+
+            # If this suggestion was tied to a specific task, mark it as complete
+            if self.active_ai_task:
+                self.app_logic.mark_task_as_complete(self.active_ai_task)
+                self.active_ai_task = None # Clear after use
+            
+            # Trigger highlight after applying changes
+            self.code_editor.trigger_highlight()
+            
             window.destroy()
         except Exception as e:
             messagebox.showerror("Apply Error", f"Could not apply changes: {e}", parent=window)
@@ -270,10 +328,14 @@ class EditTab(tk.Frame):
         if enabled:
             self.ai_task_entry.delete(0, tk.END)
 
+    def set_ai_task(self, task_text):
+        """Sets the text of the AI task entry widget."""
+        self.ai_task_entry.delete(0, tk.END)
+        self.ai_task_entry.insert(0, task_text)
+        self.ai_task_entry.focus_set()
+
     def apply_colors(self, colors):
         """Applies a new color theme to the edit tab and its children."""
         self.colors = colors
         self.config(bg=colors['bg'])
-        self.text_editor.config(bg=colors['bg'], fg=colors['fg'],
-                                insertbackground=colors['fg'],
-                                selectbackground=colors['accent'])
+        self.code_editor.apply_colors(colors)

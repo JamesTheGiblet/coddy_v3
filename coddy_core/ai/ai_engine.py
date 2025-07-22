@@ -1,4 +1,5 @@
 import google.generativeai as genai
+import json
 
 # NOTE: This engine uses the google-generativeai library.
 # Ensure it is installed: pip install google-generativeai
@@ -47,31 +48,57 @@ Follow these rules:
 
     def get_code_suggestion(self, user_prompt, code_snippet):
         """
-        Generates a code suggestion based on a user prompt and a code snippet.
+        Generates a code suggestion and a suggested filename based on a user prompt and a code snippet.
+        Returns a dictionary: {'filename': 'suggested_name.py', 'code': '...'}
         """
         if not self.model:
             raise ConnectionError("AI model is not initialized. Please check your API key.")
 
-        system_prompt = f"""
+        # If there's no existing code, it's a new file generation task.
+        if not code_snippet.strip():
+            system_prompt = f"""
+You are an expert software engineering assistant named Coddy.
+A user has provided a task to create a new file. Your goal is to:
+1. Suggest a concise, standard, snake_case Python filename for this task.
+2. Write the initial Python code to implement the task.
+
+You MUST return a JSON object with two keys: "filename" and "code".
+The "filename" should be a string (e.g., "weather_api_handler.py").
+The "code" should be a string containing the raw Python code.
+Do not include any other text or markdown formatting in your response.
+
+User's Task: "{user_prompt}"
+"""
+        else: # It's a modification/refactoring task.
+            system_prompt = f"""
 You are an expert software engineering assistant named Coddy.
 A user has provided a code snippet and a request. Your task is to modify the code as requested.
-IMPORTANT: You MUST return ONLY the raw, modified code block. Do NOT include any explanations, conversational text, or markdown formatting like ```python.
-Your entire response should be ONLY the code, ready to be pasted directly back into an editor.
 
-User's Request: "{user_prompt}"
+You MUST return a JSON object with two keys: "filename" and "code".
+The "filename" key should be null, as the file already exists.
+The "code" key should be a string containing ONLY the raw, modified code block.
+Do not include any explanations or conversational text in the code.
 
 Modify the following code:
 ---
 {code_snippet}
 ---
+
+User's Request: "{user_prompt}"
 """
         try:
             response = self.model.generate_content(system_prompt)
             # Clean up potential markdown code fences that the model might still add
             cleaned_text = response.text.strip()
-            if cleaned_text.startswith("```") and cleaned_text.endswith("```"):
+            if cleaned_text.startswith("```json"):
                 cleaned_text = "\n".join(cleaned_text.splitlines()[1:-1])
-            return cleaned_text
+            
+            data = json.loads(cleaned_text)
+            return data
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"Error parsing AI JSON response: {e}\nRaw response: {response.text}")
+            # Fallback for non-JSON responses
+            return {'filename': None, 'code': response.text}
         except Exception as e:
             print(f"Error during AI code suggestion generation: {e}")
             raise e # Re-raise to be caught by the UI thread

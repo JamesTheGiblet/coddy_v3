@@ -7,7 +7,7 @@ Mad Clock aims to create a fun and engaging desktop application that uses riddle
 ## ✅ MVP Milestones
 
 ### Phase 1: 🏗️ Core Setup & Foundation
-- [ ] Task: Set up basic project structure (folders, `main.py`, `riddle_manager.py`, etc.).
+- [x] Task: Set up basic project structure (folders, `main.py`, `riddle_manager.py`, etc.).
 - [ ] Task: Initialize the chosen GUI framework (Tkinter).
 - [ ] Task: Implement a basic window with a text box for riddle input.
 - [ ] Task: Implement a simple score tracker (local storage using a file or a lightweight database).

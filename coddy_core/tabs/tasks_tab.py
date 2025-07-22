@@ -113,20 +113,51 @@ class TasksTab(tk.Frame):
             phase_label.pack(anchor='w', pady=(20, 10))
 
             for task_idx, task in enumerate(phase['tasks']):
+                task_frame = ttk.Frame(self.tasks_container)
+                task_frame.pack(fill='x', padx=20, pady=2)
+
                 var = tk.BooleanVar(value=task['completed'])
                 check = ttk.Checkbutton(
-                    self.tasks_container,
+                    task_frame,
                     variable=var,
                     text=task['text'],
                     command=lambda p_idx=phase_idx, t_idx=task_idx: self._on_task_toggle(p_idx, t_idx)
                 )
-                check.pack(anchor='w', padx=20)
+                check.pack(side='left', anchor='w')
+
+                gen_button = ttk.Button(
+                    task_frame, text="⚡ Gen Code",
+                    command=lambda t=task['text']: self._on_generate_code_for_task(t)
+                )
+                gen_button.pack(side='right', anchor='e')
+
+                # Disable button if user doesn't have the required feature
+                if not subscription.is_feature_enabled(self.app_logic.active_tier, subscription.Feature.AI_SUGGESTION):
+                    gen_button.config(state="disabled")
 
     def _on_task_toggle(self, phase_index, task_index):
         """Called when a task checkbox is toggled. Updates data and saves the file."""
         task = self.roadmap_data[phase_index]['tasks'][task_index]
         task['completed'] = not task['completed']
         self._save_roadmap_to_file()
+
+    def _on_generate_code_for_task(self, task_text):
+        """Primes the Edit tab with the selected task."""
+        self.app_logic.execute_code_generation_for_task(task_text)
+
+    def complete_task_by_text(self, task_text_to_complete):
+        """Finds a task by its text and marks it as complete."""
+        task_found = False
+        for phase in self.roadmap_data:
+            for task in phase['tasks']:
+                if task['text'] == task_text_to_complete:
+                    task['completed'] = True
+                    task_found = True
+                    break
+            if task_found:
+                self._save_roadmap_to_file()
+                self._render_roadmap()
+                break
 
     def _get_roadmap_content_as_string(self):
         """Constructs the full roadmap markdown content from the internal data structure."""

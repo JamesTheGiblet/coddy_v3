@@ -81,10 +81,22 @@ Coddy is being built to support the creative-coding flow: design your ideas, cha
 
 ### Phase 5: ✅ Tasks Tab
 
-- [ ] Visual roadmap viewer (cards, lists)
-- [ ] Track completed tasks
-- [ ] AI summaries of sessions
-- [ ] Auto-task planning (Visionary tier)
+- [x] Visual roadmap viewer (cards, lists)
+  - [x] Sub-task: Create `TasksTab` module to display roadmap content.
+  - [x] Sub-task: Implement a parser for `roadmap.md` to extract phases and tasks.
+  - [x] Sub-task: Render phases and tasks using Tkinter widgets in a scrollable view.
+- [x] Track completed tasks
+  - [x] Sub-task: Enable checkboxes and bind them to a save function.
+  - [x] Sub-task: Implement logic to rewrite `roadmap.md` with updated task statuses.
+- [x] AI summaries of sessions
+  - [x] Sub-task: Add "Summarize Session" button to the Tasks Tab.
+  - [x] Sub-task: Create a new AI engine method for generating summaries from roadmap content.
+  - [x] Sub-task: Gate the feature to the "Architect" tier.
+- [x] Auto-task planning (Visionary tier)
+  - [x] Sub-task: Add "Visionary" tier and `AUTO_TASK_PLANNING` feature to `subscription.py`.
+  - [x] Sub-task: Add "Auto-plan" button to the Tasks Tab with a confirmation dialog.
+  - [x] Sub-task: Create a new AI engine method for generating a full roadmap from a high-level goal.
+  - [x] Sub-task: Implement logic to overwrite `roadmap.md` and refresh the UI.
 
 ---
 
@@ -136,7 +148,31 @@ All users can:
 
 ---
 
-## 🌟 Current Focus: Polishing and Refinement
+### Phase 8: ✨ User Experience & Workflow
 
-- Implementing developer preferences (e.g., debug info).
-- Reviewing code for quality and clarity.
+- [x] Task: Implement an intelligent task-to-code workflow
+  - [x] Sub-task: Add "Gen Code" button to each task in the Tasks Tab.
+  - [x] Sub-task: Implement a communication channel between the Tasks and Edit tabs.
+  - [x] Sub-task: Automatically trigger AI code generation when the button is clicked.
+  - [x] Sub-task: Automatically mark the task as complete when the generated code is applied.
+- [x] Task: Implement intelligent file naming for generated code
+  - [x] Sub-task: Update the AI prompt to request a suggested filename in a JSON response.
+  - [x] Sub-task: Pre-populate the "Save As" dialog with the AI-suggested filename.
+- [x] Task: Add a right-click context menu to the file tree
+  - [x] Sub-task: Implement "New File", "New Folder", "Rename", and "Delete" actions.
+  - [x] Sub-task: Add confirmation dialogs for destructive actions like deletion.
+- [x] Task: Add a persistent status bar for user feedback
+  - [x] Sub-task: Implement a status bar widget in the main application window.
+  - [x] Sub-task: Create a centralized `update_status` method.
+  - [x] Sub-task: Integrate status updates for key actions (saving, opening files, etc.).
+- [x] Task: Add a first-run welcome/tutorial experience
+  - [x] Sub-task: Implement a `has_run_before` check in the application config.
+  - [x] Sub-task: Generate a `getting_started.md` file for new projects on the first run.
+  - [x] Sub-task: Automatically open the welcome file in the editor.
+
+---
+
+## 🌟 Current Focus: MVP Complete
+
+- All core features from the initial roadmap are implemented.
+- The focus is now on stabilization, bug fixing, and planning for V4.

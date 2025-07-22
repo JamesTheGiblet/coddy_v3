@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import threading
+import os
 
 class GenesisTab(tk.Frame):
     """
@@ -22,33 +23,32 @@ class GenesisTab(tk.Frame):
             self._display_initial_chat_history()
         else:
             self._initial_greeting() # Fallback if no AI engine
+        self._update_project_status_button()
 
     def _create_widgets(self):
         """Creates and lays out the widgets for the genesis tab."""
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
+        # Use pack consistently as the parent frame is packed.
+
+        # Input frame at the bottom
+        input_frame = tk.Frame(self)
+        input_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+
+        # Buttons frame within the input frame
+        buttons_frame = tk.Frame(input_frame)
+        buttons_frame.pack(side=tk.RIGHT, padx=(10, 0))
+
+        # User input entry within the input frame
+        self.user_input = tk.Entry(input_frame, relief=tk.FLAT,
+                                   highlightthickness=1)
+        self.user_input.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=5)
 
         # Chat history display
         self.chat_history = tk.Text(self, wrap=tk.WORD, relief=tk.FLAT, borderwidth=0, state=tk.DISABLED,
                                     padx=10, pady=10, font=("Helvetica", 11))
-        self.chat_history.grid(row=0, column=0, sticky="nsew", columnspan=2)
+        self.chat_history.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         # Configure tags for chat styling
         self.chat_history.tag_configure("sender", font=("Helvetica", 11, "bold"))
-
-        # Input frame
-        input_frame = tk.Frame(self)
-        input_frame.grid(row=1, column=0, sticky="ew", columnspan=2, padx=10, pady=10)
-        input_frame.columnconfigure(0, weight=1)
-
-        # User input entry
-        self.user_input = tk.Entry(input_frame, relief=tk.FLAT,
-                                   highlightthickness=1)
-        self.user_input.grid(row=0, column=0, sticky="ew", ipady=5)
-
-        # Buttons frame
-        buttons_frame = tk.Frame(input_frame)
-        buttons_frame.grid(row=0, column=1, sticky="e", padx=(10, 0))
 
         # Send button
         self.send_button = tk.Button(buttons_frame, text="Send", command=self._on_send,
@@ -70,6 +70,11 @@ class GenesisTab(tk.Frame):
                                         relief=tk.FLAT, borderwidth=0, padx=10, pady=2, cursor="hand2", state=tk.DISABLED)
         self.roadmap_button.pack(side=tk.LEFT, padx=(5, 0))
 
+        # Start Project button
+        self.start_project_button = tk.Button(buttons_frame, text="🚀 Start Project", command=self._on_start_project,
+                                              relief=tk.FLAT, borderwidth=0, padx=10, pady=2, cursor="hand2", state=tk.DISABLED)
+        self.start_project_button.pack(side=tk.LEFT, padx=(5, 0))
+
     def _initial_greeting(self):
         """Displays a welcome message in the chat history."""
         greeting = "Welcome to the Genesis Chamber.\n\nWhat are we building today? Describe your idea, and I'll help you create a project roadmap."
@@ -85,6 +90,23 @@ class GenesisTab(tk.Frame):
         for message in self.ai_engine.chat.history[1:]: # Skip the system prompt
             sender = "Coddy" if message.role == 'model' else "You"
             self._add_message(sender, message.parts[0].text)
+
+    def _update_project_status_button(self):
+        """Checks if the project has been started and updates the button accordingly."""
+        main_py_path = os.path.join(self.main_app.project_path, "main.py")
+        roadmap_path = os.path.join(self.main_app.project_path, "roadmap.md")
+
+        project_started = os.path.exists(main_py_path)
+        roadmap_exists = os.path.exists(roadmap_path)
+
+        if not roadmap_exists:
+            self.start_project_button.config(state=tk.DISABLED)
+            return
+
+        if project_started:
+            self.start_project_button.config(text="✅ Continue Project", state=tk.NORMAL)
+        else:
+            self.start_project_button.config(text="🚀 Start Project", state=tk.NORMAL)
 
     def _add_message(self, sender, message):
         """Adds a message to the chat history text widget."""
@@ -105,6 +127,7 @@ class GenesisTab(tk.Frame):
         self.weird_button.config(state=tk.DISABLED)
         self.generate_button.config(state=tk.DISABLED)
         self.roadmap_button.config(state=tk.DISABLED)
+        self.start_project_button.config(state=tk.DISABLED)
 
         if generation_type == 'chat':
             self._add_message("Coddy", "Thinking...")
@@ -133,6 +156,7 @@ class GenesisTab(tk.Frame):
             self._add_message("Coddy", "I've generated the `README.md` and saved it to your project folder. You can see it in the file tree and the 'Edit' tab.\n\nAre you happy to proceed with generating a detailed `roadmap.md` based on this information? If so, click 'Generate Roadmap'.")
         elif generation_type == 'roadmap':
             self.main_app.save_roadmap(response)
+            self._update_project_status_button()
             self._add_message("Coddy", "The `roadmap.md` has been generated and saved. The project foundation is now complete!")
         elif generation_type == 'chat':
             if "[READY_TO_GENERATE]" in response:
@@ -165,6 +189,28 @@ class GenesisTab(tk.Frame):
         """Handles the user clicking the 'Weird Idea' button."""
         prompt = "Give me a weird, unconventional, and creative idea for a software project. Something that sounds fun to build."
         self._submit_to_ai(prompt)
+
+    def _on_start_project(self):
+        """Handles the user clicking the 'Start/Continue Project' button."""
+        main_py_path = os.path.join(self.main_app.project_path, "main.py")
+
+        if os.path.exists(main_py_path):
+            # "Continue Project" was clicked
+            self._add_message("Coddy", "Let's get back to it! Switching to the Edit tab...")
+            self.main_app.notebook.select(self.main_app.tab_frames["Edit"])
+            # Ensure the file is loaded in the editor
+            self.main_app.edit_tab.load_file(main_py_path)
+        else:
+            # "Start Project" was clicked
+            self._add_message("Coddy", "Great! I'm creating a `main.py` file for you and opening it in the Edit tab.")
+            boilerplate_content = ("# Welcome to your new Coddy project!\n"
+                                 "# This is your main entry point.\n\n"
+                                 "def main():\n"
+                                 "    print(\"Hello, Coddy World!\")\n\n"
+                                 "if __name__ == \"__main__\":\n"
+                                 "    main()\n")
+            self.main_app.create_and_open_file("main.py", content=boilerplate_content)
+        self._update_project_status_button()
 
     def _on_generate_readme(self):
         """Handles the user clicking the 'Generate README' button."""
@@ -288,3 +334,6 @@ Generate only the raw Markdown content for the `roadmap.md` file. Do not include
         self.roadmap_button.config(bg=colors['accent'], fg=colors['button_fg'],
                                    activebackground=colors['accent_active'],
                                    activeforeground=colors['button_fg'])
+        self.start_project_button.config(bg=colors['accent'], fg=colors['button_fg'],
+                                         activebackground=colors['accent_active'],
+                                         activeforeground=colors['button_fg'])
