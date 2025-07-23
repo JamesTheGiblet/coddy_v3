@@ -1,13 +1,9 @@
 import sqlite3
 import os
 import logging
-from . import security
-from . import subscription
+from . import security, subscription, utils
 
-# Set up logging
-LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, "database.log")
+LOG_FILE = os.path.join(utils.get_log_dir(), "database.log")
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -17,11 +13,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DB_FILE = "coddy_users.db"
-DB_PATH = os.path.join(".coddy", DB_FILE)
+DB_PATH = os.path.join(utils.get_app_root(), ".coddy", DB_FILE)
 
 def get_db_connection():
     """Establishes a connection to the SQLite database."""
-    os.makedirs(".coddy", exist_ok=True)
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn

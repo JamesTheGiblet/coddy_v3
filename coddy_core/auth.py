@@ -2,14 +2,9 @@ import dataclasses
 import os
 import logging
 from . import subscription
-from . import database
-from . import security
+from . import database, security, utils
 
-# Set up logging
-LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, "auth.log")
-
+LOG_FILE = os.path.join(utils.get_log_dir(), "auth.log")
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,

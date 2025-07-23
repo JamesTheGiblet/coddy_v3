@@ -2,13 +2,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import os
 import logging
-from .. import auth, subscription, theme, config_manager
+from .. import auth, subscription, theme, config_manager, utils
 
-# Set up logging
-LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, "settings_tab.log")
-
+LOG_FILE = os.path.join(utils.get_log_dir(), "settings_tab.log")
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,

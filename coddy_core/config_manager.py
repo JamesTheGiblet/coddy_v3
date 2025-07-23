@@ -1,5 +1,6 @@
 import json
 import os
+from . import utils
 import logging
 
 # NOTE: This manager uses the python-dotenv library.
@@ -8,11 +9,7 @@ from dotenv import load_dotenv, set_key
 
 CONFIG_DIR = ".coddy"
 CONFIG_FILE = "settings.json"
-
-# Set up logging
-LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, "config_manager.log")
+LOG_FILE = os.path.join(utils.get_log_dir(), "config_manager.log")
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -22,13 +19,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Assume the script is run from the project root, where .coddy and .env reside.
-PROJECT_ROOT = os.getcwd() 
+PROJECT_ROOT = utils.get_app_root()
 CONFIG_PATH = os.path.join(PROJECT_ROOT, CONFIG_DIR, CONFIG_FILE)
 ENV_PATH = os.path.join(PROJECT_ROOT, ".env")
 
 def _ensure_config_dir_exists():
     """Ensures the .coddy configuration directory exists."""
-    os.makedirs(CONFIG_DIR, exist_ok=True)
+    os.makedirs(os.path.join(PROJECT_ROOT, CONFIG_DIR), exist_ok=True)
 
 def load_config():
     """Loads the application configuration from settings.json."""

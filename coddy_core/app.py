@@ -4,13 +4,9 @@ import os
 import logging
 import traceback
 from .landing_page import LandingPage
-from . import database
+from . import database, utils
 
-# Set up logging
-LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, "app.log")
-
+LOG_FILE = os.path.join(utils.get_log_dir(), "app.log")
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,

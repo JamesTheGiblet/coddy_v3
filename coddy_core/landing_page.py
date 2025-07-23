@@ -6,18 +6,14 @@ import sys
 import logging
 
 # Set up logging
-LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, "landing_page.log")
-
 logging.basicConfig(
-    filename=LOG_FILE,
+    filename=os.path.join(utils.get_log_dir(), "landing_page.log"),
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
 # Local imports
-from . import config_manager, theme
+from . import config_manager, theme, utils
 # Ensure main_application is imported
 from . import main_application
 
@@ -33,6 +29,8 @@ class LandingPage(tk.Toplevel):
             logger.exception("Failed to load application config.")
             messagebox.showerror("Configuration Error", f"Could not load settings.json: {e}")
             self.app_config = {} # Start with an empty config
+
+        self._perform_first_run_setup()
 
         self.main_app_window = None
         # When this window is closed, the entire application should exit.
@@ -66,6 +64,31 @@ class LandingPage(tk.Toplevel):
         self._create_widgets()
         self.switch_theme(theme_name)
         logger.info("LandingPage initialized.")
+
+    def _perform_first_run_setup(self):
+        """Creates application-level directories and files on the very first run."""
+        if not self.app_config.get('has_run_before', False):
+            logger.info("Performing first-run shrine setup...")
+            try:
+                app_root = utils.get_app_root()
+                # Create the main directory for user projects
+                os.makedirs(os.path.join(app_root, "coddy_codes"), exist_ok=True)
+                logger.info("Created 'coddy_codes' directory.")
+
+                # Create the manifesto file in the project root
+                manifesto_path = os.path.join(app_root, "manifesto.md")
+                if not os.path.exists(manifesto_path):
+                    manifesto_content = '''
+# Coddy's Manifesto
+
+> “Everyone’s this is me—the way I think, refined, coded, and relayed to the world. I'm weird, odd, and don’t fit in. Coddy lets anyone do what I do—make amazing things.”
+'''
+                    with open(manifesto_path, 'w', encoding='utf-8') as f:
+                        f.write(manifesto_content.strip())
+                    logger.info("Created 'manifesto.md'.")
+            except OSError as e:
+                logger.exception("Error during first-run shrine setup.")
+                messagebox.showerror("Setup Error", f"Could not perform first-run setup:\n{e}", parent=self)
 
     def _create_widgets(self):
         """Creates and places the static widgets in the window."""
@@ -182,7 +205,8 @@ class LandingPage(tk.Toplevel):
         project_name = project_name.strip()
         # In a real app, more robust sanitization would be needed.
 
-        base_path = os.path.join("coddy_codes")
+        app_root = utils.get_app_root()
+        base_path = os.path.join(app_root, "coddy_codes")
         project_path = os.path.join(base_path, project_name)
 
         if os.path.exists(project_path):

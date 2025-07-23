@@ -4,14 +4,10 @@ import os
 import threading
 import re
 import logging
-from .. import subscription
+from .. import subscription, utils
 from ..ui.code_editor import CodeEditor
 
-# Set up logging
-LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, "edit_tab.log")
-
+LOG_FILE = os.path.join(utils.get_log_dir(), "edit_tab.log")
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.INFO,
