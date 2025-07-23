@@ -78,6 +78,11 @@ class GenesisTab(tk.Frame):
                                       relief=tk.FLAT, borderwidth=0, padx=10, pady=2, cursor="hand2")
         self.weird_button.pack(side=tk.LEFT, padx=(5, 0))
 
+        # Clear Chat button
+        self.clear_button = tk.Button(buttons_frame, text="Clear Chat", command=self._clear_chat,
+                                      relief=tk.FLAT, borderwidth=0, padx=10, pady=2, cursor="hand2")
+        self.clear_button.pack(side=tk.LEFT, padx=(5, 0))
+
         # Generate README button
         self.generate_button = tk.Button(buttons_frame, text="Generate README", command=self._on_generate_readme,
                                          relief=tk.FLAT, borderwidth=0, padx=10, pady=2, cursor="hand2", state=tk.DISABLED)
@@ -139,6 +144,7 @@ class GenesisTab(tk.Frame):
         state = tk.NORMAL if enabled else tk.DISABLED
         self.send_button.config(state=state)
         self.weird_button.config(state=state)
+        self.clear_button.config(state=state)
         # Only enable generate/roadmap buttons if their conditions are met
         if enabled and self.is_ready_to_generate and not self.readme_generated:
             self.generate_button.config(state=tk.NORMAL)
@@ -235,6 +241,32 @@ class GenesisTab(tk.Frame):
         logger.info("'Weird Idea' button clicked.")
         prompt = "Give me a weird, unconventional, and creative idea for a software project. Something that sounds fun to build."
         self._submit_to_ai(prompt)
+
+    def _clear_chat(self):
+        """Clears the chat history and resets the Genesis session."""
+        logger.info("Clear Chat button clicked, session reset.")
+        # Clear the text widget
+        self.chat_history.config(state=tk.NORMAL)
+        self.chat_history.delete('1.0', tk.END)
+        self.chat_history.config(state=tk.DISABLED)
+
+        # Reset state
+        self.is_ready_to_generate = False
+        self.readme_generated = False
+
+        # Restart AI session and display greeting
+        if self.ai_engine:
+            try:
+                self.ai_engine.start_new_chat()
+                self._display_initial_chat_history()
+            except Exception as e:
+                logger.exception("Failed to start new AI chat session after clearing.")
+                self._add_message("Coddy", f"Error re-initializing AI chat: {e}")
+        else:
+            self._initial_greeting()
+
+        # Update UI state
+        self._toggle_input_widgets(enabled=True)
 
     def _on_start_project(self):
         """Handles the user clicking the 'Start/Continue Project' button."""
@@ -377,6 +409,8 @@ Generate only the raw Markdown content for the `roadmap.md` file. Do not include
                                 activebackground=colors['accent_active'],
                                 activeforeground=colors['button_fg'])
         self.weird_button.config(bg=colors['bg'], fg=colors['quote'],
+                                 activebackground=colors['bg'], activeforeground=colors['fg'])
+        self.clear_button.config(bg=colors['bg'], fg=colors['quote'],
                                  activebackground=colors['bg'], activeforeground=colors['fg'])
         self.generate_button.config(bg=colors['accent'], fg=colors['button_fg'],
                                     activebackground=colors['accent_active'],
