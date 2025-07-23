@@ -3,7 +3,19 @@ from tkinter import font as tkfont
 from tkinter import filedialog, simpledialog, messagebox
 import os
 import sys
+import logging
 
+# Set up logging
+LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "landing_page.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 # Local imports
 from . import config_manager, theme
 # Ensure main_application is imported
@@ -15,7 +27,13 @@ class LandingPage(tk.Toplevel):
         Initialize the CoddyLandingPage window.
         """
         super().__init__(master, *args, **kwargs)
-        self.app_config = config_manager.load_config()
+        try:
+            self.app_config = config_manager.load_config()
+        except Exception as e:
+            logger.exception("Failed to load application config.")
+            messagebox.showerror("Configuration Error", f"Could not load settings.json: {e}")
+            self.app_config = {} # Start with an empty config
+
         self.main_app_window = None
         # When this window is closed, the entire application should exit.
         self.protocol("WM_DELETE_WINDOW", self.master.destroy)
@@ -47,6 +65,7 @@ class LandingPage(tk.Toplevel):
         # --- Create and layout widgets ---
         self._create_widgets()
         self.switch_theme(theme_name)
+        logger.info("LandingPage initialized.")
 
     def _create_widgets(self):
         """Creates and places the static widgets in the window."""
@@ -152,8 +171,10 @@ class LandingPage(tk.Toplevel):
             "Enter a name for your new project:",
             parent=self
         )
+        logger.info(f"User prompted to start a new project. Entered: '{project_name}'")
 
         if not project_name or not project_name.strip():
+            logger.info("Project creation cancelled by user.")
             print("Project creation cancelled.")
             return
 
@@ -165,6 +186,7 @@ class LandingPage(tk.Toplevel):
         project_path = os.path.join(base_path, project_name)
 
         if os.path.exists(project_path):
+            logger.info(f"Project '{project_name}' already exists.")
             load_existing = messagebox.askyesno(
                 "Project Exists",
                 f"A project named '{project_name}' already exists.\nDo you want to load it?",
@@ -172,21 +194,28 @@ class LandingPage(tk.Toplevel):
             )
             if load_existing:
                 self.launch_main_app(project_path, file_to_open=None)
+            else:
+                logger.info("User chose not to load existing project.")
         else:
-            os.makedirs(project_path, exist_ok=True)
-            print(f"Created new project at: {project_path}")
+            try:
+                os.makedirs(project_path, exist_ok=True)
+                logger.info(f"Created new project directory at: {project_path}")
+                print(f"Created new project at: {project_path}")
 
-            file_to_open = None
-            # Check if this is the user's first time creating a project
-            if not self.app_config.get('has_run_before', False):
-                self._create_welcome_file(project_path)
-                file_to_open = "getting_started.md"
-                
-                # Update and save the config so this only runs once
-                self.app_config['has_run_before'] = True
-                config_manager.save_config(self.app_config)
+                file_to_open = None
+                # Check if this is the user's first time creating a project
+                if not self.app_config.get('has_run_before', False):
+                    logger.info("First run detected, creating welcome file.")
+                    self._create_welcome_file(project_path)
+                    file_to_open = "getting_started.md"
+                    
+                    self.app_config['has_run_before'] = True
+                    config_manager.save_config(self.app_config)
 
-            self.launch_main_app(project_path, file_to_open=file_to_open)
+                self.launch_main_app(project_path, file_to_open=file_to_open)
+            except Exception as e:
+                logger.exception(f"Failed to create project '{project_name}' at {project_path}")
+                messagebox.showerror("Project Creation Error", f"Could not create project:\n{e}", parent=self)
 
     def _create_welcome_file(self, project_path):
         """Creates a getting_started.md file in the new project directory."""
@@ -217,8 +246,10 @@ Happy coding!
         try:
             with open(os.path.join(project_path, "getting_started.md"), 'w', encoding='utf-8') as f:
                 f.write(welcome_content)
+            logger.info(f"Welcome file created in {project_path}")
         except IOError as e:
-            print(f"Could not create welcome file: {e}")
+            logger.exception(f"Could not create welcome file in {project_path}")
+            messagebox.showerror("File Error", f"Could not create welcome file:\n{e}", parent=self)
 
     def _prompt_load_project(self):
         """Opens a dialog to select a project folder and prints the path."""
@@ -227,25 +258,34 @@ Happy coding!
             mustexist=True
         )
         if project_path:
+            logger.info(f"User selected project to load: {project_path}")
             self.launch_main_app(project_path, file_to_open=None)
         else:
+            logger.info("Project loading cancelled by user.")
             print("No project folder selected.")
 
     def launch_main_app(self, project_path, file_to_open=None):
         """Hides the landing page and opens the main application window."""
-        # Create the main window, which will set its own close protocol
-        main_application.MainApplication(
-            master=self.master,
-            project_path=project_path,
-            theme_name=self.current_theme_name,
-            file_to_open=file_to_open
-        )
-        # Destroy the landing page as the main app is now open
-        self.destroy()
+        logger.info(f"Launching main application for project: {project_path}")
+        try:
+            # Create the main window, which will set its own close protocol
+            main_application.MainApplication(
+                master=self.master,
+                project_path=project_path,
+                theme_name=self.current_theme_name,
+                file_to_open=file_to_open
+            )
+            # Destroy the landing page as the main app is now open
+            self.destroy()
+            logger.info("Landing page destroyed, main application is now active.")
+        except Exception as e:
+            logger.critical(f"Failed to launch MainApplication for project {project_path}", exc_info=True)
+            messagebox.showerror("Application Error", f"A critical error occurred while launching the project:\n{e}", parent=self)
 
     def switch_theme(self, theme_name):
         """Loads a new theme and applies the colors to all widgets."""
         self.current_theme_name = theme_name
+        logger.info(f"Switching theme to '{theme_name}'.")
         self.colors = theme.get_theme(theme_name)
         self._apply_colors()
 

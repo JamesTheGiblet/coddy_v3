@@ -1,4 +1,18 @@
 from enum import Enum, auto
+import os
+import logging
+
+# Set up logging
+LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "subscription.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class SubscriptionTier(Enum):
     """Defines the available subscription tiers."""
@@ -42,16 +56,20 @@ def is_feature_enabled(tier: SubscriptionTier, feature: Feature) -> bool:
     Checks if a feature is enabled for a given subscription tier.
     Higher tiers inherit all features from lower tiers.
     """
+    logger.debug(f"Checking if feature '{feature.name}' is enabled for tier '{tier.value}'.")
     try:
         current_tier_index = TIER_HIERARCHY.index(tier)
     except ValueError:
+        logger.error(f"Invalid tier '{tier}' passed to is_feature_enabled.")
         return False # Should not happen with valid enum
 
     # Check the user's tier and all tiers below it in the hierarchy.
     for i in range(current_tier_index + 1):
         lower_tier = TIER_HIERARCHY[i]
         if feature in TIER_FEATURES.get(lower_tier, set()):
+            logger.debug(f"Feature '{feature.name}' is ENABLED for tier '{tier.value}'.")
             return True
+    logger.debug(f"Feature '{feature.name}' is DISABLED for tier '{tier.value}'.")
     return False
 
 def get_tier_by_name(tier_name: str) -> SubscriptionTier:
@@ -59,4 +77,5 @@ def get_tier_by_name(tier_name: str) -> SubscriptionTier:
     for tier in SubscriptionTier:
         if tier.value == tier_name:
             return tier
+    logger.warning(f"Tier name '{tier_name}' not found. Defaulting to FREE tier.")
     return SubscriptionTier.FREE

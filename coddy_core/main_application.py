@@ -3,6 +3,19 @@ from tkinter import ttk, simpledialog, messagebox
 import os
 import shutil
 from . import auth, config_manager, subscription, theme
+import logging
+
+# Set up logging
+LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "main_application.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 from .ai.ai_engine import AIEngine
 from .tabs.genesis_tab import GenesisTab
 from .tabs.edit_tab import EditTab
@@ -14,6 +27,7 @@ class MainApplication(tk.Toplevel):
 
     def __init__(self, master, project_path, theme_name='dark', file_to_open=None):
         super().__init__(master)
+        logger.info(f"Initializing MainApplication for project: {project_path}")
         self.project_path = project_path
         self.theme_name = theme_name
         self.colors = theme.get_theme(self.theme_name)
@@ -26,7 +40,8 @@ class MainApplication(tk.Toplevel):
             try:
                 self.ai_engine = AIEngine(api_key=gemini_api_key)
             except Exception as e:
-                print(f"Failed to initialize AI Engine: {e}")
+                logger.exception("Failed to initialize AI Engine.")
+                messagebox.showwarning("AI Engine Error", f"Could not initialize the AI Engine. Please check your API key and network connection.\n\nError: {e}", parent=self)
         
         # Add the loaded Gemini key to the config dict for the settings tab UI
         self.app_config['gemini_api_key'] = gemini_api_key
@@ -59,6 +74,7 @@ class MainApplication(tk.Toplevel):
 
         # Set initial UI state for the default (logged-out) profile
         self._update_auth_ui()
+        logger.info("MainApplication initialized successfully.")
 
     def _configure_styles(self):
         """Configure ttk styles for the current theme."""
@@ -209,6 +225,7 @@ class MainApplication(tk.Toplevel):
                 self.refresh_file_tree()
                 self.update_status(f"Renamed to '{new_name}'")
             except OSError as e:
+                logger.exception(f"Error renaming '{path}' to '{new_path}'.")
                 messagebox.showerror("Error", f"Could not rename: {e}", parent=self)
 
     def _delete_item(self):
@@ -226,6 +243,7 @@ class MainApplication(tk.Toplevel):
                 self.refresh_file_tree()
                 self.update_status(f"Deleted '{item_name}'")
             except OSError as e:
+                logger.exception(f"Error deleting '{path}'.")
                 messagebox.showerror("Error", f"Could not delete: {e}", parent=self)
 
     def _new_file(self):
@@ -250,6 +268,7 @@ class MainApplication(tk.Toplevel):
                 self.refresh_file_tree()
                 self.update_status(f"Created file: {file_name}")
             except OSError as e:
+                logger.exception(f"Error creating new file at '{new_path}'.")
                 messagebox.showerror("Error", f"Could not create file: {e}", parent=self)
 
     def _new_folder(self):
@@ -273,6 +292,7 @@ class MainApplication(tk.Toplevel):
                 self.refresh_file_tree()
                 self.update_status(f"Created folder: {folder_name}")
             except OSError as e:
+                logger.exception(f"Error creating new folder at '{new_path}'.")
                 messagebox.showerror("Error", f"Could not create folder: {e}", parent=self)
 
     def _populate_tree(self, parent_node="", path=None):
@@ -280,16 +300,19 @@ class MainApplication(tk.Toplevel):
         if path is None:
             path = self.project_path
 
-        for item in sorted(os.listdir(path)):
-            full_path = os.path.join(path, item)
-            is_dir = os.path.isdir(full_path)
-            # Insert node and get its ID, storing full_path in values
-            node_id = self.tree.insert(parent_node, 'end', text=item, open=False, values=[full_path])
-            if is_dir:
-                # If it's a directory, add a placeholder child to show the expander icon
-                self.tree.insert(node_id, 'end')
-                # And recursively populate it
-                self._populate_tree(node_id, full_path)
+        try:
+            for item in sorted(os.listdir(path)):
+                full_path = os.path.join(path, item)
+                is_dir = os.path.isdir(full_path)
+                # Insert node and get its ID, storing full_path in values
+                node_id = self.tree.insert(parent_node, 'end', text=item, open=False, values=[full_path])
+                if is_dir:
+                    # If it's a directory, add a placeholder child to show the expander icon
+                    self.tree.insert(node_id, 'end')
+                    # And recursively populate it
+                    self._populate_tree(node_id, full_path)
+        except OSError as e:
+            logger.error(f"Error reading directory '{path}': {e}")
 
     def _on_tree_select(self, event):
         """Handles selection of an item in the file tree."""
@@ -348,7 +371,7 @@ class MainApplication(tk.Toplevel):
             self.notebook.select(self.tab_frames["Edit"])
             self.edit_tab.load_file_content(content, file_path=readme_path)
         except IOError as e:
-            print(f"Error saving README.md: {e}")
+            logger.exception("Error saving README.md")
 
     def save_roadmap(self, content):
         """Saves the roadmap.md file and refreshes the UI."""
@@ -365,7 +388,7 @@ class MainApplication(tk.Toplevel):
             self.notebook.select(self.tab_frames["Edit"])
             self.edit_tab.load_file_content(content, file_path=roadmap_path)
         except IOError as e:
-            print(f"Error saving roadmap.md: {e}")
+            logger.exception("Error saving roadmap.md")
 
     def create_and_open_file(self, file_name, content=""):
         """Creates a new file in the project root and opens it in the editor."""
@@ -380,6 +403,7 @@ class MainApplication(tk.Toplevel):
                 self.update_status(f"Created and opened '{file_name}'")
                 self.refresh_file_tree()
             except OSError as e:
+                logger.exception(f"Error creating file '{file_name}'.")
                 messagebox.showerror("Error", f"Could not create file: {e}", parent=self)
                 return
 
@@ -389,6 +413,7 @@ class MainApplication(tk.Toplevel):
 
     def save_settings(self):
         """Gathers settings from tabs and saves them to the config file."""
+        logger.info("Saving settings.")
         if self.settings_tab:
             settings_data = self.settings_tab.get_settings_data()
             
@@ -444,6 +469,7 @@ class MainApplication(tk.Toplevel):
         """Callback function for when a user successfully logs in."""
         self.current_user = user
         self.active_tier = user.tier
+        logger.info(f"Login successful for {user.email}. Active tier: {user.tier.value}")
         self.update_status(f"Welcome, {user.email}!")
         self._update_auth_ui()
 
@@ -458,11 +484,13 @@ class MainApplication(tk.Toplevel):
         # When logging out, always revert to the default FREE tier.
         self.active_tier = subscription.SubscriptionTier.FREE
         self.active_tier_name = self.active_tier.value
+        logger.info("User logged out. Active tier reverted to FREE.")
         self.update_status("Successfully logged out.")
         self._update_auth_ui()
 
     def on_close(self):
         """Handles window close event, saves settings, and exits the app."""
+        logger.info("Closing application, saving settings.")
         self.save_settings()
         self.master.destroy()
 
@@ -481,6 +509,7 @@ class MainApplication(tk.Toplevel):
 
     def switch_theme(self, theme_name):
         """Public method to allow theme switching from outside."""
+        logger.info(f"Switching theme to {theme_name}.")
         self.theme_name = theme_name
 
         # Persist the theme change
