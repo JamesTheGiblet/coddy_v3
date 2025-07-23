@@ -1,6 +1,20 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+import os
+import logging
 from .. import auth
+
+# Set up logging
+LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "login_window.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class LoginWindow(tk.Toplevel):
     """A modal window for user login and signup."""
@@ -22,10 +36,12 @@ class LoginWindow(tk.Toplevel):
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
         self._create_login_widgets()
+        logger.info("Login window opened.")
 
     def _create_login_widgets(self):
         self._clear_frame()
         self.title("Login to Coddy")
+        logger.info("Switched to login view.")
 
         ttk.Label(self.main_frame, text="Email:").pack(fill='x', pady=(0, 5))
         self.email_entry = ttk.Entry(self.main_frame)
@@ -45,6 +61,7 @@ class LoginWindow(tk.Toplevel):
     def _create_signup_widgets(self):
         self._clear_frame()
         self.title("Sign Up for Coddy")
+        logger.info("Switched to signup view.")
 
         ttk.Label(self.main_frame, text="Email:").pack(fill='x', pady=(0, 5))
         self.email_entry = ttk.Entry(self.main_frame)
@@ -64,29 +81,44 @@ class LoginWindow(tk.Toplevel):
     def _perform_login(self):
         email = self.email_entry.get()
         password = self.password_entry.get()
-        
-        user = auth.login(email, password)
-        if user:
-            self.user = user
-            self.on_success_callback(self.user)
-            self.destroy()
-        else:
-            messagebox.showerror("Login Failed", "Invalid email or password.", parent=self)
+        logger.info(f"Login attempt for user: {email}")
+
+        try:
+            user = auth.login(email, password)
+            if user:
+                self.user = user
+                self.on_success_callback(self.user)
+                logger.info(f"Login successful for user: {email}")
+                self.destroy()
+            else:
+                logger.warning(f"Login failed for user {email}: Invalid credentials.")
+                messagebox.showerror("Login Failed", "Invalid email or password.", parent=self)
+        except Exception as e:
+            logger.exception(f"An unexpected error occurred during login for {email}: {e}")
+            messagebox.showerror("Login Error", f"An unexpected error occurred: {e}", parent=self)
 
     def _perform_signup(self):
         email = self.email_entry.get()
         password = self.password_entry.get()
+        logger.info(f"Signup attempt for user: {email}")
 
         if not email or not password:
+            logger.warning("Signup attempt failed: email or password was empty.")
             messagebox.showwarning("Input Required", "Please enter both email and password.", parent=self)
             return
 
-        user = auth.signup(email, password)
-        if user:
-            messagebox.showinfo("Success", "Account created! Please log in to continue.", parent=self)
-            self._create_login_widgets()
-        else:
-            messagebox.showerror("Signup Failed", "An account with this email already exists.", parent=self)
+        try:
+            user = auth.signup(email, password)
+            if user:
+                logger.info(f"Signup successful for user: {email}")
+                messagebox.showinfo("Success", "Account created! Please log in to continue.", parent=self)
+                self._create_login_widgets()
+            else:
+                logger.warning(f"Signup failed for user {email}: user already exists.")
+                messagebox.showerror("Signup Failed", "An account with this email already exists.", parent=self)
+        except Exception as e:
+            logger.exception(f"An unexpected error occurred during signup for {email}: {e}")
+            messagebox.showerror("Signup Error", f"An unexpected error occurred: {e}", parent=self)
 
     def _clear_frame(self):
         for widget in self.main_frame.winfo_children():
