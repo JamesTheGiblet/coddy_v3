@@ -2,7 +2,19 @@ import tkinter as tk
 from tkinter import ttk
 import threading
 import os
+import logging
 
+# Set up logging
+LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "genesis_tab.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 class GenesisTab(tk.Frame):
     """
     The UI for the Genesis tab, where users chat with the AI to build the project foundation.
@@ -19,10 +31,16 @@ class GenesisTab(tk.Frame):
 
         self._create_widgets()
         if self.ai_engine:
-            self.ai_engine.start_new_chat()
-            self._display_initial_chat_history()
+            try:
+                self.ai_engine.start_new_chat()
+                self._display_initial_chat_history()
+                logger.info("GenesisTab initialized with new AI chat session.")
+            except Exception as e:
+                logger.exception("Failed to start AI chat session on initialization.")
+                self._add_message("Coddy", f"Error initializing AI chat: {e}\nPlease check your API key in Settings and restart.")
         else:
             self._initial_greeting() # Fallback if no AI engine
+            logger.warning("GenesisTab initialized without an AI engine.")
         self._update_project_status_button()
 
     def _create_widgets(self):
@@ -116,30 +134,60 @@ class GenesisTab(tk.Frame):
         self.chat_history.config(state=tk.DISABLED)
         self.chat_history.see(tk.END) # Scroll to the bottom
 
+    def _toggle_input_widgets(self, enabled=True):
+        """Enables or disables all user input widgets."""
+        state = tk.NORMAL if enabled else tk.DISABLED
+        self.send_button.config(state=state)
+        self.weird_button.config(state=state)
+        # Only enable generate/roadmap buttons if their conditions are met
+        if enabled and self.is_ready_to_generate and not self.readme_generated:
+            self.generate_button.config(state=tk.NORMAL)
+        else:
+            self.generate_button.config(state=tk.DISABLED)
+        
+        if enabled and self.readme_generated:
+            self.roadmap_button.config(state=tk.NORMAL)
+        else:
+            self.roadmap_button.config(state=tk.DISABLED)
+
+        self._update_project_status_button() # This handles the start project button state
+
     def _submit_to_ai(self, prompt, generation_type='chat'):
         """Handles the AI call in a separate thread to avoid freezing the UI."""
         if not self.ai_engine:
+            logger.error("Attempted to submit to AI, but no engine is configured.")
             self._add_message("Coddy", "AI Engine not configured. Please check your .env file for a valid GEMINI_API_KEY.")
             return
 
-        # Disable buttons to prevent multiple submissions
-        self.send_button.config(state=tk.DISABLED)
-        self.weird_button.config(state=tk.DISABLED)
-        self.generate_button.config(state=tk.DISABLED)
-        self.roadmap_button.config(state=tk.DISABLED)
-        self.start_project_button.config(state=tk.DISABLED)
+        logger.info(f"Submitting prompt for {generation_type}: {prompt[:70]}...")
+        self._toggle_input_widgets(enabled=False)
 
         if generation_type == 'chat':
             self._add_message("Coddy", "Thinking...")
 
-        # Run the AI call in a separate thread
         thread = threading.Thread(target=self._get_ai_response_threaded, args=(prompt, generation_type))
         thread.start()
 
     def _get_ai_response_threaded(self, prompt, generation_type):
         """The function that runs in a separate thread to call the AI."""
-        response = self.ai_engine.get_chat_response(prompt)
-        self.after(0, self._update_ui_with_response, response, generation_type)
+        try:
+            response = self.ai_engine.get_chat_response(prompt)
+            self.after(0, self._update_ui_with_response, response, generation_type)
+        except Exception as e:
+            logger.exception(f"Error getting AI response for {generation_type}.")
+            error_message = f"Sorry, an error occurred: {e}"
+            self.after(0, self._handle_ai_error, error_message)
+
+    def _handle_ai_error(self, error_message):
+        """Displays an error message in the chat and re-enables the UI."""
+        # Remove the "Thinking..." message
+        self.chat_history.config(state=tk.NORMAL)
+        last_line_start = self.chat_history.index("end-3l")
+        self.chat_history.delete(last_line_start, "end-1c")
+        self.chat_history.config(state=tk.DISABLED)
+
+        self._add_message("Coddy", error_message)
+        self._toggle_input_widgets(enabled=True)
 
     def _update_ui_with_response(self, response, generation_type):
         """Updates the chat with the AI's response and re-enables buttons."""
@@ -151,14 +199,17 @@ class GenesisTab(tk.Frame):
             self.chat_history.config(state=tk.DISABLED)
 
         if generation_type == 'readme':
+            logger.info("README.md generated successfully.")
             self.main_app.save_readme(response)
             self.readme_generated = True
             self._add_message("Coddy", "I've generated the `README.md` and saved it to your project folder. You can see it in the file tree and the 'Edit' tab.\n\nAre you happy to proceed with generating a detailed `roadmap.md` based on this information? If so, click 'Generate Roadmap'.")
         elif generation_type == 'roadmap':
+            logger.info("roadmap.md generated successfully.")
             self.main_app.save_roadmap(response)
             self._update_project_status_button()
             self._add_message("Coddy", "The `roadmap.md` has been generated and saved. The project foundation is now complete!")
         elif generation_type == 'chat':
+            logger.info("Received chat response from AI.")
             if "[READY_TO_GENERATE]" in response:
                 self.is_ready_to_generate = True
                 # Combine the AI's response with the call to action into a single message
@@ -169,13 +220,7 @@ class GenesisTab(tk.Frame):
             else:
                 self._add_message("Coddy", response)
 
-        self.send_button.config(state=tk.NORMAL)
-        self.weird_button.config(state=tk.NORMAL)
-        if self.is_ready_to_generate:
-            if not self.readme_generated:
-                self.generate_button.config(state=tk.NORMAL)
-        if self.readme_generated:
-            self.roadmap_button.config(state=tk.NORMAL)
+        self._toggle_input_widgets(enabled=True)
 
     def _on_send(self):
         """Handles the user clicking the 'Send' button."""
@@ -187,6 +232,7 @@ class GenesisTab(tk.Frame):
 
     def _on_weird_idea(self):
         """Handles the user clicking the 'Weird Idea' button."""
+        logger.info("'Weird Idea' button clicked.")
         prompt = "Give me a weird, unconventional, and creative idea for a software project. Something that sounds fun to build."
         self._submit_to_ai(prompt)
 
@@ -196,11 +242,13 @@ class GenesisTab(tk.Frame):
 
         if os.path.exists(main_py_path):
             # "Continue Project" was clicked
+            logger.info("'Continue Project' clicked.")
             self._add_message("Coddy", "Let's get back to it! Switching to the Edit tab...")
             self.main_app.notebook.select(self.main_app.tab_frames["Edit"])
             # Ensure the file is loaded in the editor
             self.main_app.edit_tab.load_file(main_py_path)
         else:
+            logger.info("'Start Project' clicked.")
             # "Start Project" was clicked
             self._add_message("Coddy", "Great! I'm creating a `main.py` file for you and opening it in the Edit tab.")
             boilerplate_content = ("# Welcome to your new Coddy project!\n"
@@ -214,6 +262,7 @@ class GenesisTab(tk.Frame):
 
     def _on_generate_readme(self):
         """Handles the user clicking the 'Generate README' button."""
+        logger.info("'Generate README' button clicked.")
         self._add_message("Coddy", "Okay, I'm generating the README.md file based on our conversation. This might take a moment...")
         final_prompt = (
             "Based on our entire conversation history, generate a complete and well-structured README.md file. "
@@ -239,6 +288,7 @@ class GenesisTab(tk.Frame):
 
     def _on_generate_roadmap(self):
         """Handles the user clicking the 'Generate Roadmap' button."""
+        logger.info("'Generate Roadmap' button clicked.")
         self._add_message("Coddy", "Excellent! I'm now generating the `roadmap.md` file. This might take a moment...")
         roadmap_rules = """
 You are a Praximous business strategic development planner. Your task is to generate a detailed, structured, and actionable `roadmap.md` file based on our entire conversation history. The roadmap should be comprehensive enough for a development team to follow.

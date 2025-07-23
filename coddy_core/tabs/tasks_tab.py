@@ -2,8 +2,21 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 import os
 import re
+import logging
 import threading
 from .. import subscription
+
+# Set up logging
+LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "tasks_tab.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class TasksTab(tk.Frame):
     """
@@ -19,6 +32,7 @@ class TasksTab(tk.Frame):
 
         self._create_widgets()
         self.load_and_display_roadmap()
+        logger.info("TasksTab initialized.")
 
     def _create_widgets(self):
         """Creates the main widgets for the tab."""
@@ -59,18 +73,22 @@ class TasksTab(tk.Frame):
         """Loads roadmap.md, parses it, and displays it."""
         for widget in self.tasks_container.winfo_children():
             widget.destroy()
+        logger.info("Loading and displaying roadmap.")
 
         roadmap_path = os.path.join(self.app_logic.project_path, "roadmap.md")
         if not os.path.exists(roadmap_path):
+            logger.warning("roadmap.md not found in project.")
             tk.Label(self.tasks_container, text="roadmap.md not found in project.", bg=self.colors['bg'], fg=self.colors['fg']).pack()
             return
 
         try:
             with open(roadmap_path, 'r', encoding='utf-8') as f:
                 content = f.read()
+            logger.info("Successfully read roadmap.md.")
             self.roadmap_preamble, self.roadmap_data = self._parse_roadmap(content)
             self._render_roadmap()
         except Exception as e:
+            logger.exception(f"Error reading or parsing roadmap.md: {e}")
             tk.Label(self.tasks_container, text=f"Error reading roadmap.md:\n{e}", bg=self.colors['bg'], fg=self.colors['fg']).pack()
 
     def _parse_roadmap(self, content):
@@ -139,14 +157,17 @@ class TasksTab(tk.Frame):
         """Called when a task checkbox is toggled. Updates data and saves the file."""
         task = self.roadmap_data[phase_index]['tasks'][task_index]
         task['completed'] = not task['completed']
+        logger.info(f"Task toggled: '{task['text']}' to {task['completed']}")
         self._save_roadmap_to_file()
 
     def _on_generate_code_for_task(self, task_text):
         """Primes the Edit tab with the selected task."""
+        logger.info(f"Priming Edit tab for task: '{task_text}'")
         self.app_logic.execute_code_generation_for_task(task_text)
 
     def complete_task_by_text(self, task_text_to_complete):
         """Finds a task by its text and marks it as complete."""
+        logger.info(f"Attempting to mark task as complete by text: '{task_text_to_complete}'")
         task_found = False
         for phase in self.roadmap_data:
             for task in phase['tasks']:
@@ -158,6 +179,8 @@ class TasksTab(tk.Frame):
                 self._save_roadmap_to_file()
                 self._render_roadmap()
                 break
+        if not task_found:
+            logger.warning(f"Could not find task to mark as complete: '{task_text_to_complete}'")
 
     def _get_roadmap_content_as_string(self):
         """Constructs the full roadmap markdown content from the internal data structure."""
@@ -180,8 +203,9 @@ class TasksTab(tk.Frame):
         try:
             with open(roadmap_path, 'w', encoding='utf-8') as f:
                 f.write(content_to_save)
+            logger.info("Roadmap saved successfully.")
         except Exception as e:
-            print(f"Error saving roadmap.md: {e}")
+            logger.exception(f"Error saving roadmap.md: {e}")
             messagebox.showerror("Save Error", f"Could not save roadmap.md:\n{e}")
 
     def _toggle_buttons(self, enabled):
@@ -192,6 +216,7 @@ class TasksTab(tk.Frame):
 
     def auto_plan_roadmap(self):
         """Handles the 'Auto-plan New Roadmap' button click."""
+        logger.info("Auto-plan roadmap initiated.")
         if not subscription.is_feature_enabled(self.app_logic.active_tier, subscription.Feature.AUTO_TASK_PLANNING):
             messagebox.showinfo(
                 "Upgrade Required",
@@ -201,11 +226,13 @@ class TasksTab(tk.Frame):
             return
 
         if not messagebox.askyesno("Confirm Overwrite", "This will generate a new roadmap and overwrite your existing roadmap.md file. Are you sure you want to continue?"):
+            logger.info("Roadmap auto-plan cancelled by user confirmation.")
             return
 
         project_goal = simpledialog.askstring("New Roadmap Goal", "Describe your project goal in one or two sentences:", parent=self)
 
         if not project_goal or not project_goal.strip():
+            logger.info("Roadmap auto-plan cancelled by user in goal input.")
             return # User cancelled or entered nothing
 
         self._toggle_buttons(enabled=False)
@@ -214,9 +241,11 @@ class TasksTab(tk.Frame):
     def _run_ai_autoplan_thread(self, project_goal):
         """Worker thread to call the AI for auto-planning."""
         try:
+            logger.info(f"Requesting auto-planned roadmap from AI with goal: '{project_goal}'")
             new_roadmap_content = self.app_logic.ai_engine.get_auto_planned_roadmap(project_goal)
             self.after(0, self._handle_autoplan_result, new_roadmap_content)
         except Exception as e:
+            logger.exception("An error occurred during AI auto-planning.")
             self.after(0, messagebox.showerror, "AI Error", f"An error occurred during auto-planning:\n{e}")
         finally:
             self.after(0, self._toggle_buttons, True)
@@ -224,14 +253,17 @@ class TasksTab(tk.Frame):
     def _handle_autoplan_result(self, new_content):
         """Saves the new roadmap and refreshes the UI."""
         if new_content:
+            logger.info("New roadmap generated successfully by AI.")
             self.app_logic.save_roadmap(new_content)
             self.load_and_display_roadmap()
             messagebox.showinfo("Success", "New roadmap has been generated and saved!")
         else:
+            logger.warning("AI returned an empty roadmap during auto-plan.")
             messagebox.showwarning("AI Response", "The AI returned an empty roadmap. Please try again.")
 
     def get_ai_summary(self):
         """Handles the 'Summarize Session' button click."""
+        logger.info("AI session summary initiated.")
         if not subscription.is_feature_enabled(self.app_logic.active_tier, subscription.Feature.AI_SESSION_SUMMARY):
             messagebox.showinfo(
                 "Upgrade Required",
@@ -247,9 +279,11 @@ class TasksTab(tk.Frame):
     def _run_ai_summary_thread(self, roadmap_content):
         """Worker thread to call the AI and display the result."""
         try:
+            logger.info("Requesting session summary from AI.")
             summary = self.app_logic.ai_engine.get_session_summary(roadmap_content)
             self.after(0, messagebox.showinfo, "Session Summary", summary)
         except Exception as e:
+            logger.exception("An error occurred while generating the AI summary.")
             self.after(0, messagebox.showerror, "AI Error", f"An error occurred while generating the summary:\n{e}")
         finally:
             self.after(0, self._toggle_buttons, True)

@@ -1,6 +1,20 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+import os
+import logging
 from .. import auth, subscription, theme, config_manager
+
+# Set up logging
+LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "settings_tab.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class SettingsTab(tk.Frame):
     """
@@ -16,6 +30,7 @@ class SettingsTab(tk.Frame):
         self._create_widgets()
         self.load_settings()
         self.update_auth_status() # Set initial auth state
+        logger.info("SettingsTab initialized.")
 
     def _create_widgets(self):
         """Creates and lays out the widgets for the settings tab."""
@@ -67,25 +82,31 @@ class SettingsTab(tk.Frame):
 
     def load_settings(self):
         """Loads settings from the config manager and populates the widgets."""
-        config = self.app_logic.app_config
-        
-        # API Key
-        api_key = config.get('gemini_api_key', '')
-        if api_key:
-            self.api_key_entry.insert(0, api_key)
-            self._on_api_key_focus_out(None) # To mask it initially
-        else:
-            self.api_key_entry.insert(0, "Enter your Gemini API key...")
+        try:
+            config = self.app_logic.app_config
+            
+            # API Key
+            api_key = config.get('gemini_api_key', '')
+            if api_key:
+                self.api_key_entry.insert(0, api_key)
+                self._on_api_key_focus_out(None) # To mask it initially
+            else:
+                self.api_key_entry.insert(0, "Enter your Gemini API key...")
+                logger.warning("Gemini API key not found in config.")
 
-        # Theme
-        self.theme_var.set(config.get('theme', 'dark'))
+            # Theme
+            self.theme_var.set(config.get('theme', 'dark'))
 
-        # Tier
-        self.tier_var.set(self.app_logic.active_tier_name)
+            # Tier
+            self.tier_var.set(self.app_logic.active_tier_name)
 
-        # Developer Prefs
-        self.autosave_var.set(config.get('developer_autosave', False))
-        self.debug_info_var.set(config.get('developer_debug_info', False))
+            # Developer Prefs
+            self.autosave_var.set(config.get('developer_autosave', False))
+            self.debug_info_var.set(config.get('developer_debug_info', False))
+            logger.info("Settings loaded into UI.")
+        except Exception as e:
+            logger.exception(f"Error loading settings: {e}")
+            messagebox.showerror("Settings Error", f"Could not load settings: {e}")
 
     def get_settings_data(self):
         """Returns a dictionary of the current settings from the UI."""
@@ -106,21 +127,26 @@ class SettingsTab(tk.Frame):
             self.login_logout_button.config(text="Logout", command=self.app_logic.logout)
             self.tier_combo.set(user.tier.value)
             self.tier_combo.config(state="disabled")
+            logger.info(f"Auth status updated: Logged in as {user.email}")
         else:
             self.auth_status_label.config(text="Status: Logged Out")
             self.login_logout_button.config(text="Login...", command=self.app_logic.show_login_window)
             self.tier_combo.config(state="readonly")
             # When logging out, set the combo to the saved config value
             self.tier_combo.set(self.app_logic.app_config.get('active_tier', 'Free'))
+            logger.info("Auth status updated: Logged out.")
 
     def _on_theme_change(self, event=None):
         """Callback for when the theme is changed."""
-        self.app_logic.switch_theme(self.theme_var.get())
+        new_theme = self.theme_var.get()
+        logger.info(f"Theme changed to: {new_theme}")
+        self.app_logic.switch_theme(new_theme)
 
     def _on_tier_change(self, event=None):
         """Callback for when the tier is changed for local testing."""
         # This only has an effect when logged out.
         new_tier_name = self.tier_var.get()
+        logger.info(f"Testing tier changed to: {new_tier_name}")
         self.app_logic.active_tier = subscription.get_tier_by_name(new_tier_name)
         self.app_logic.active_tier_name = new_tier_name # Keep name in sync
         self.app_logic.update_status(f"Testing tier set to: {new_tier_name}")

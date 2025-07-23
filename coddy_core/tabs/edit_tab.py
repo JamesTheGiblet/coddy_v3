@@ -3,8 +3,21 @@ from tkinter import ttk, messagebox, Toplevel, scrolledtext, filedialog
 import os
 import threading
 import re
+import logging
 from .. import subscription
 from ..ui.code_editor import CodeEditor
+
+# Set up logging
+LOG_DIR = r"C:\Users\gilbe\Documents\GitHub\coddy_v3\coddy_core\log"
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "edit_tab.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class EditTab(tk.Frame):
     """
@@ -72,6 +85,7 @@ class EditTab(tk.Frame):
             self.load_file_content(content, file_path=file_path, highlight=True)
         except Exception as e:
             error_message = f"Could not read file:\n{file_path}\n\nError: {e}"
+            logger.error(error_message)
             self.load_file_content(error_message, file_path=None)
 
     def load_file_content(self, content, file_path=None, highlight=False):
@@ -124,6 +138,7 @@ class EditTab(tk.Frame):
             if is_new_file:
                 self.app_logic.refresh_file_tree()
         except Exception as e:
+            logger.error(f"Could not save file: {path_to_save}\nError: {e}")
             messagebox.showerror("Save Error", f"Could not save file:\n{path_to_save}\n\nError: {e}")
 
     def _on_text_modified(self, event=None):
@@ -138,6 +153,7 @@ class EditTab(tk.Frame):
             if self.code_editor.text.winfo_exists():
                 self.code_editor.text.edit_modified(False)
         except tk.TclError:
+            logger.warning("Text widget destroyed during shutdown.")
             pass # Widget might be destroyed during shutdown
 
     def get_ai_suggestion(self):
@@ -230,6 +246,7 @@ class EditTab(tk.Frame):
             suggestion = self.app_logic.ai_engine.get_full_refactor(code_snippet)
             self.after(0, self._display_suggestion, suggestion)
         except Exception as e:
+            logger.error(f"AI refactor error: {e}")
             self.after(0, messagebox.showerror, "AI Error", f"An error occurred during refactoring:\n{e}")
         finally:
             self.after(0, self._toggle_ai_widgets, True)
@@ -250,6 +267,7 @@ class EditTab(tk.Frame):
 
             self.after(0, self._display_suggestion, code_suggestion)
         except Exception as e:
+            logger.error(f"AI suggestion error: {e}")
             self.after(0, messagebox.showerror, "AI Error", f"An error occurred while getting a suggestion:\n{e}")
         finally:
             self.after(0, self._toggle_ai_widgets, True)
@@ -316,6 +334,7 @@ class EditTab(tk.Frame):
             
             window.destroy()
         except Exception as e:
+            logger.error(f"Could not apply changes: {e}")
             messagebox.showerror("Apply Error", f"Could not apply changes: {e}", parent=window)
 
     def _toggle_ai_widgets(self, enabled):
