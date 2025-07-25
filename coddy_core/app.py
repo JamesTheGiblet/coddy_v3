@@ -4,7 +4,7 @@ import os
 import logging
 import traceback
 from .landing_page import LandingPage
-from . import database, utils
+from . import database, utils, __version__
 
 LOG_FILE = os.path.join(utils.get_log_dir(), "app.log")
 logging.basicConfig(
@@ -34,7 +34,12 @@ class App:
             return
 
         self.initialization_failed = False
-        logger.info("Application initialized.")
+
+        # Log version and commit hash for traceability
+        commit_hash = utils.get_git_commit_hash()
+        logger.info("--- Coddy V3 Initializing ---")
+        logger.info(f"Version: {__version__}")
+        logger.info(f"Ritual Hash (Commit): {commit_hash}")
 
     def _handle_exception(self, exc, val, tb):
         """Handles uncaught exceptions in the Tkinter event loop."""

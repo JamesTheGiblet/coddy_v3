@@ -190,10 +190,10 @@ Coddy completes his foundational form. He is packaged, witnessed, and reflected 
 
 📦 2. Installer & Distribution Bundle
 
-- [ ] Build .exe with full privileges (via PyInstaller or Nuitka)
+- [x] Build .exe with full privileges (via PyInstaller or Nuitka)
 - [x] Shrine setup: auto-creation of coddy_codes/, manifesto.md, and config files
-- [ ] Include assets: mascot glyphs, splash screen, tutorial files
-- [ ] Versioned release with changelog and ritual hash
+- [x] Include assets: mascot glyphs, splash screen, tutorial files
+- [x] Versioned release with changelog and ritual hash
 
 📡 3. Beta Channel Activation
 
