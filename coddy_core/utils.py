@@ -9,17 +9,52 @@ def get_app_root():
     from source or as a bundled executable (e.g., via PyInstaller).
     """
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        # The application is frozen (e.g., by PyInstaller)
+        # The application is frozen (e.g., by PyInstaller).
+        # The executable is in the root of the distribution.
         return os.path.dirname(sys.executable)
     else:
-        # The application is running from a .py file
-        return os.getcwd()
+        # The application is running from a .py file.
+        # The project root is one level up from this file's directory (coddy_core/).
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+def get_app_data_dir():
+    r"""
+    Returns the absolute path to the application's data directory.
+    This is a user-writable location for logs, configs, etc.
+    - Windows: %APPDATA%\Coddy
+    - macOS: ~/Library/Application Support/Coddy
+    - Linux: ~/.config/Coddy or ~/.local/share/Coddy
+    """
+    app_name = "Coddy"
+    if sys.platform == "win32":
+        return os.path.join(os.environ["APPDATA"], app_name)
+    elif sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", app_name)
+    else:
+        # Use XDG_CONFIG_HOME if available, otherwise default to ~/.config
+        xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
+        if xdg_config_home:
+            return os.path.join(xdg_config_home, app_name)
+        return os.path.join(os.path.expanduser("~"), ".config", app_name)
 
 def get_log_dir():
-    """Returns the absolute path to the log directory."""
-    log_dir = os.path.join(get_app_root(), "log")
+    """Returns the absolute path to the log directory inside AppData."""
+    log_dir = os.path.join(get_app_data_dir(), "logs")
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
+
+def get_user_shrine_dir():
+    """
+    Returns the absolute path to the user's Coddy shrine directory,
+    typically in their Documents folder, creating it if it doesn't exist.
+    This is the designated location for user-generated projects and content.
+    """
+    # A common and reliable way to get the user's home directory.
+    home_dir = os.path.expanduser('~')
+    # We'll place the shrine in a "Coddy Projects" folder inside Documents.
+    shrine_path = os.path.join(home_dir, 'Documents', 'Coddy Projects')
+    os.makedirs(shrine_path, exist_ok=True)
+    return shrine_path
 
 def resource_path(relative_path):
     """

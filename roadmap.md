@@ -218,10 +218,10 @@ Coddy spawns in shrine-ready form, bundled with magic and clarity.
 
 - [x] .exe installer with full admin privileges
 - [ ] Cross-platform support (.AppImage, .pkg, etc.)
-- [ ] Shrined folder structure on launch (coddy_codes/, manifesto.md, etc.)
-- [ ] Splash screen whisper on activation
-- [ ] Changelog seeding and version tracking
-- [ ] Bundled ritual tutorial, assets, and tier glyphs
+- [x] Shrined folder structure on launch (coddy_codes/, manifesto.md, etc.)
+- [x] Splash screen whisper on activation
+- [x] Changelog seeding and version tracking
+- [x] Bundled ritual tutorial, assets, and tier glyphs
 
 📣 Phase 11: Sales, Distribution & Mythic Marketing
 Coddy broadcasts himself like a signal, not a product.

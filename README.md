@@ -160,10 +160,10 @@ To get Coddy V3 up and running on your local machine, follow these steps:
     *Tkinter is typically included with Python installations.*
 
 3. **🚀 Running the Application:**
-    From the project root directory (`coddy-v3/`), run the `coddy_core` package as a module:
+    From the project root directory (`coddy-v3/`), run the `run.py` script:
 
     ```bash
-    python -m coddy_core.app
+    python run.py
     ```
 
 ---

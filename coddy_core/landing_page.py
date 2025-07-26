@@ -5,6 +5,11 @@ import os
 import sys
 import logging
 
+# Local imports must come before they are used.
+from . import config_manager, theme, utils
+# Ensure main_application is imported
+from . import main_application
+
 # Set up logging
 logging.basicConfig(
     filename=os.path.join(utils.get_log_dir(), "landing_page.log"),
@@ -12,10 +17,6 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
-# Local imports
-from . import config_manager, theme, utils
-# Ensure main_application is imported
-from . import main_application
 
 class LandingPage(tk.Toplevel):
     def __init__(self, master, theme_name='dark', *args, **kwargs):
@@ -29,8 +30,6 @@ class LandingPage(tk.Toplevel):
             logger.exception("Failed to load application config.")
             messagebox.showerror("Configuration Error", f"Could not load settings.json: {e}")
             self.app_config = {} # Start with an empty config
-
-        self._perform_first_run_setup()
 
         self.main_app_window = None
         # When this window is closed, the entire application should exit.
@@ -64,31 +63,6 @@ class LandingPage(tk.Toplevel):
         self._create_widgets()
         self.switch_theme(theme_name)
         logger.info("LandingPage initialized.")
-
-    def _perform_first_run_setup(self):
-        """Creates application-level directories and files on the very first run."""
-        if not self.app_config.get('has_run_before', False):
-            logger.info("Performing first-run shrine setup...")
-            try:
-                app_root = utils.get_app_root()
-                # Create the main directory for user projects
-                os.makedirs(os.path.join(app_root, "coddy_codes"), exist_ok=True)
-                logger.info("Created 'coddy_codes' directory.")
-
-                # Create the manifesto file in the project root
-                manifesto_path = os.path.join(app_root, "manifesto.md")
-                if not os.path.exists(manifesto_path):
-                    manifesto_content = '''
-# Coddy's Manifesto
-
-> “Everyone’s this is me—the way I think, refined, coded, and relayed to the world. I'm weird, odd, and don’t fit in. Coddy lets anyone do what I do—make amazing things.”
-'''
-                    with open(manifesto_path, 'w', encoding='utf-8') as f:
-                        f.write(manifesto_content.strip())
-                    logger.info("Created 'manifesto.md'.")
-            except OSError as e:
-                logger.exception("Error during first-run shrine setup.")
-                messagebox.showerror("Setup Error", f"Could not perform first-run setup:\n{e}", parent=self)
 
     def _create_widgets(self):
         """Creates and places the static widgets in the window."""
@@ -205,8 +179,9 @@ class LandingPage(tk.Toplevel):
         project_name = project_name.strip()
         # In a real app, more robust sanitization would be needed.
 
-        app_root = utils.get_app_root()
-        base_path = os.path.join(app_root, "coddy_codes")
+        # Projects should be created in the user's shrine, not the app install directory.
+        shrine_dir = utils.get_user_shrine_dir()
+        base_path = os.path.join(shrine_dir, "coddy_codes")
         project_path = os.path.join(base_path, project_name)
 
         if os.path.exists(project_path):
@@ -227,13 +202,13 @@ class LandingPage(tk.Toplevel):
                 print(f"Created new project at: {project_path}")
 
                 file_to_open = None
-                # Check if this is the user's first time creating a project
-                if not self.app_config.get('has_run_before', False):
+                # Check if this is the user's first time creating any project
+                if not self.app_config.get('first_project_created', False):
                     logger.info("First run detected, creating welcome file.")
                     self._create_welcome_file(project_path)
                     file_to_open = "getting_started.md"
                     
-                    self.app_config['has_run_before'] = True
+                    self.app_config['first_project_created'] = True
                     config_manager.save_config(self.app_config)
 
                 self.launch_main_app(project_path, file_to_open=file_to_open)
