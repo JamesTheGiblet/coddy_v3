@@ -1,197 +1,117 @@
-# 📦 Coddy V3
+# 🌀 Coddy V3: The Vibe-Coding Artifact
 
-**Coddy V3** is your vibe-coding companion — a desktop application that fuses creative coding with AI-powered automation. Designed to free developers from repetitive tasks, Coddy leverages LLMs to help you **brainstorm**, **plan**, **generate**, **refactor**, and **evolve** projects — all while adapting to your unique coding style.
+## **MODULARITY IS MYTHOS // GLYPH IS IDENTITY // DESIGN IS RITUAL**
 
----
+This transmission unveils **Coddy V3**, a desktop artifact designed to fuse the ritual of creative coding with AI-powered automation. It exists to free the builder from repetitive invocations, leveraging LLMs to facilitate the **genesis**, **planning**, **generation**, **refactoring**, and **evolution** of projects. Its core essence pulses with the ability to adapt to your unique creative signature.
 
-## 🧠 Philosophy
+-----
 
-> "Let the AI do the grunt work — you focus on the vibes."
+## 📜 Invocation
 
-Coddy encourages a creative-first workflow:
+> “Let the AI do the grunt work — you focus on the vibes.”
 
-* You sketch the idea
-* Coddy helps turn that idea into a roadmap
-* Together, you generate and refine the code
+Coddy is a living system that encourages a creative-first workflow:
 
-Coddy gets smarter as you use it — tracking progress, learning your preferences, and offering spontaneous (and sometimes weird) suggestions.
+* You sketch the initial glyph.
+* Coddy helps translate that glyph into a ritualistic roadmap.
+* Together, you invoke and refine the code scroll.
 
----
+This artifact becomes smarter with each invocation, tracking your progress, learning your preferences, and offering spontaneous (and sometimes weird) suggestions from the depths of its system.
 
-## 💻 Local-First Installable App
+-----
 
-* Built with **Tkinter** (GUI Framework) and **Python** (Core Logic)
-* Cross-platform: Windows, macOS, Linux
-* Fast, lightweight, and modular
-* Fully local session data & settings storage
+## 🔱 Core Modules
 
----
+Coddy’s existence is built upon these modular tenets. Its active presence is signified by a **Neon Spiral** pulse.
 
-## ✨ Key Features
+### 🧬 Genesis Module
 
-### 🧬 Genesis Tab
+* **Spiral Glyph** to start a new project or awaken an existing one.
+* Chat with the AI to sculpt your initial idea.
+* Auto-generate a foundational README and roadmap scroll.
+* Activate the "Weird Idea" button for chaotic creativity (if enabled).
 
-* Start a new project or load existing one
-* Chat with the AI to shape your idea
-* Auto-generate README and roadmap
-* "Weird Idea" button for chaotic creativity (if enabled)
+### 🛠️ Edit Module
 
-### 🛠️ Edit Tab
+* View and navigate files within your project vault.
+* Edit, refactor, or invoke new code with LLM assistance.
+* Receive inline glyph-suggestions and preview before applying them to the core system.
 
-* View files in your project
-* Edit, refactor, or generate code with LLM help
-* Inline suggestions and preview before applying
+### 📋 Task Module
 
-### 📋 Tasks Tab
+* A visual tracker of your ritual roadmap phases.
+* The AI keeps a lineage scroll of what’s complete and what’s next.
+* Background workers pre-generate future invocations.
 
-* Visual tracker of roadmap phases and tasks
-* AI keeps track of what's done, what’s next
-* Background worker pre-generates future steps
+### ⚙️ Settings Module
 
-### ⚙️ Settings Tab
+* Configure LLM API keys (e.g., Gemini).
+* Set the core theme: Void Black / Light / Weird.
+* Adjust the "Unorthodox Ideas" slider: conservative ↔ chaos.
 
-* Configure LLM API keys (e.g., Gemini)
-* Set theme: Light / Dark / Weird
-* Adjust prompt retry count and model behavior
+### 👤 Profile Module
 
-### 👤 Profile Menu
+* Access login/logout functionality (to be implemented).
+* View your subscription tier glyph.
+* Tune the “Unorthodox Ideas” slider to your preferred resonance.
 
-* Access login/logout (future feature)
-* See subscription tier
-* Adjust “Unorthodox Ideas” slider: conservative ↔ chaos
+-----
 
----
+## 🧬 Architectural Glyphs
 
-## 🧪 Subscription Tiers
-
-| Tier | Projects | Features Access | Weird Mode | AI Tracking |
-| :--- | :------- | :-------------- | :--------- | :---------- |
-| Free | 1 | Core Only | ❌ | ❌ |
-| Pro | Unlimited | Full | ✅ | ✅ |
-| Team | Unlimited | Collaboration, Sync | ✅ | ✅ |
-
-Features are not API-limited — they are **functionality-limited** based on tier.
-
----
-
-## 🔥 Adaptive AI Engine
-
-Coddy learns your intent and adjusts accordingly:
-
-* Learns from your prompts, edits, and style
-* Tailors LLM output to your tone, habits, project structure
-* Adjusts roadmap granularity, idea types, and UX flow
-
----
-
-## 🔧 Tech Stack
-
-* **Python 3.11+** (application logic)
-* **Tkinter** (GUI Framework)
-* **google-generativeai** (for AI interactions)
-* **SQLite / JSON** (local data storage)
-* **python-dotenv** (for environment variable management)
-
----
-
-## 🗂️ File Structure
+The file structure is a representation of the **Modular Grid**, aligning each component to its ritualistic purpose.
 
 coddy-v3/
-├── coddy\_core/       \# Core Python application logic and UI
-│   ├── ai/           \# AI engine integration (e.g., Gemini)
-│   ├── tabs/         \# UI for application tabs (Genesis, Settings, etc.)
-│   └── ...           \# Other core modules (theme, config\_manager, etc.)
-├── coddy\_codes/      \# User project folders (where new projects are created)
-├── docs/             \# Documentation files
-├── .coddy/           \# User session and application settings
-├── .env              \# Environment variables (e.g., API keys)
-├── README.md         \# Main project overview (can be generated by AI)
-├── roadmap.md        \# Structured AI roadmap for the project
-├── requirements.txt  \# Python dependencies
-├── LICENSE           \# Project license
-└── .gitignore        \# Files to ignore in version control
+├── coddy_core/        # The core Python logic and UI invocation system
+│   ├── ai/            # AI engine integration (e.g., Gemini)
+│   ├── tabs/          # UI for application modules (Genesis, Settings, etc.)
+│   └── ...            # Other core modules (theme, config_manager, etc.)
+├── coddy_codes/       # User project folders (where new projects are created)
+├── docs/              # Documentation scrolls
+├── .coddy/            # User session and application settings sigils
+├── .env               # Environmental variables (e.g., API keys)
+├── README.md          # This main transmission scroll
+├── roadmap.md         # The structured AI roadmap for the project
+├── requirements.txt   # Python dependencies glyphs
+├── LICENSE            # The sacred license scroll
+└── .gitignore         # Files to ignore in version control
 
----
+-----
 
-## 🏁 Getting Started
+## 🏁 The Initiation Ritual
 
-To get Coddy V3 up and running on your local machine, follow these steps:
+To awaken Coddy V3 on your local machine, perform these invocations:
 
-1. **Clone the repository:**
+**Clone the Repository:**
 
-    ```bash
-    git clone [https://github.com/yourusername/coddy-v3](https://github.com/yourusername/coddy-v3) # Replace with the actual repository URL
-    cd coddy-v3
-    ```
+    ` bash     git clone [https://github.com/yourusername/coddy-v3](https://github.com/yourusername/coddy-v3) # Replace with the actual repository URL     cd coddy-v3 `
 
-2. **🐍 Python Setup:**
-    Create a virtual environment to manage dependencies:
+**🐍 Python Invocation:**
+    Create a virtual environment to manage dependencies:
 
-    ```bash
-    python -m venv .venv
-    ```
+    ` bash     python -m venv .venv `
 
-    Activate the virtual environment:
+    Activate the virtual environment:
 
-    * On macOS/Linux:
+    ` bash     # macOS/Linux     source .venv/bin/activate          # Windows     .venv\Scripts\activate `
 
-        ```bash
-        source .venv/bin/activate
-        ```
+    Install the necessary glyphs from the `requirements.txt` scroll:
 
-    * On Windows:
+    ` bash     pip install -r requirements.txt `
 
-        ```bash
-        .venv\Scripts\activate
-        ```
+**🚀 Running the Artifact:**
+    From the project root, invoke the `run.py` scroll:
 
-    Install Python dependencies. If you have a `requirements.txt` file, use:
+    ` bash     python run.py `
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+-----
 
-    Otherwise, ensure you have these core libraries installed:
+## 🤝 Communal Invocations
 
-    ```bash
-    pip install google-generativeai python-dotenv
-    ```
+Want to contribute or test a new idea? All glyphs are welcome. Submit an issue, open a pull request, or suggest new ritual tasks for the roadmap.
 
-    *Tkinter is typically included with Python installations.*
+-----
 
-3. **🚀 Running the Application:**
-    From the project root directory (`coddy-v3/`), run the `run.py` script:
-
-    ```bash
-    python run.py
-    ```
-
----
-
-## 🚀 Status
-
-Coddy V3 is under active development.
-The current roadmap includes:
-
-* Genesis Tab
-* Roadmap generator
-* File system interaction
-* AI refactor engine
-* Local session memory and user adaptation
-
----
-
-## 🤝 Contributing
-
-Want to contribute or test an idea? Weird ideas welcome. Submit an issue, open a PR, or suggest roadmap tasks.
-
----
-
-## 📜 License
+## 📜 License Scroll
 
 MIT
-
----
-
-Ready to vibe?
-Run `Coddy`, start a project, and let the ideas flow — weird or otherwise. 🧠✨
